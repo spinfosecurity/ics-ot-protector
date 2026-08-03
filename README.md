@@ -45,11 +45,7 @@ This tool is built on actual attack patterns from:
 .\WUP-WUP.ps1
 ```
 
-### Bash Version (Linux/macOS)
-```bash
-chmod +x wup_wup.sh
-./wup_wup.sh
-```
+
 
 ## What This Does NOT Do
 
@@ -88,14 +84,6 @@ chmod +x wup_wup.sh
     Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)
     Action: BLOCK IMMEDIATELY or restrict to VPN only
 ```
-
-## Author
-
-**Shannon P.** - Cybersecurity Consultant & IT Professional
-
-- Associate\'s degree in Cybersecurity from Southern New Hampshire University (SNHU)
-- Experience: Windows systems administration, PowerShell automation, OT security
-- Focus: Water utility cybersecurity, ICS/SCADA protection, CISA compliance
 
 ## License
 
