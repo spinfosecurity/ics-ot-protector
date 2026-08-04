@@ -6,6 +6,13 @@
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
 [![Bash](https://img.shields.io/badge/Bash-4.0%2B-green.svg)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+[![CISA AA26-097A](https://img.shields.io/badge/CISA-AA26--097A%20Response-red)](#)
+[![EPA WaterISAC](https://img.shields.io/badge/EPA-Water%20Sector%20Cybersecurity-blue)](#)
+[![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen.svg)]()
+[![GitHub issues](https://img.shields.io/github/issues/spinfosecurity/water-utility-protector)](https://github.com/spinfosecurity/water-utility-protector/issues)
+[![GitHub stars](https://img.shields.io/github/stars/spinfosecurity/water-utility-protector?style=social)](https://github.com/spinfosecurity/water-utility-protector/stargazers)
+
+---
 
 ## About
 
@@ -13,7 +20,7 @@ Water and wastewater utilities across the United States are facing an escalating
 
 **WUP WUP** was built to give water utility IT teams, OT engineers, and cybersecurity consultants a fast, free way to identify these exact exposures on their own networks — without needing expensive commercial scanning tools or deep penetration testing expertise.
 
-**Keywords:** water utility cybersecurity, ICS security scanner, SCADA vulnerability scanner, OT network security tool, CISA compliance scanner, PowerShell security script, Bash security script, critical infrastructure protection, water treatment cyberattack detection, industrial control systems security, Modbus scanner, EtherNet/IP scanner
+**Keywords:** water utility cybersecurity, ICS security scanner, SCADA vulnerability scanner, OT network security tool, CISA AA26-097A compliance scanner, PowerShell security script, Bash security script, critical infrastructure protection, water treatment cyberattack detection, industrial control systems security, Modbus scanner, EtherNet/IP scanner, PLC security, HMI exposure detection
 
 ## What This Tool Does
 
@@ -94,7 +101,8 @@ water-utility-protector/
 ├── reports/
 ├── README.md
 ├── LICENSE
-└── CONTRIBUTING.md
+├── CONTRIBUTING.md
+└── SECURITY.md
 ```
 
 ## Documentation
@@ -103,6 +111,7 @@ water-utility-protector/
 - **[Bash Guide](scripts/bash/README.md)** — Linux/macOS implementation details
 - **[CISA Reference](docs/CISA-Reference.md)** — Official CISA guidance and reporting contacts
 - **[Threat Intelligence](docs/Threat-Intelligence.md)** — Detailed attack pattern analysis
+- **[Security Policy](./SECURITY.md)** — Responsible disclosure
 
 ## Technical Specifications
 
@@ -131,6 +140,57 @@ water-utility-protector/
     Action: Restrict to engineering VLAN; implement MFA
 ```
 
+---
+
+## FAQ
+
+**Q: Do I need admin or root privileges to run WUP WUP?**  
+A: No. It uses standard TCP connections. No raw sockets, no elevated privileges needed.
+
+**Q: Can I run this without coordinating with operations?**  
+A: No. Port scanning can trigger SCADA alarms and PLC watchdog resets. Always coordinate with your water operations team and get written authorization before scanning any production OT network.
+
+**Q: Does this tool exploit CVEs or attempt to hack PLCs?**  
+A: No. WUP WUP only checks whether ports are reachable. It never sends exploit payloads, attempts logins, or modifies any device.
+
+**Q: Can I report results directly to CISA?**  
+A: Yes. If you discover actively exploited internet-facing OT devices, you can report directly via [CISA's reporting portal](https://www.cisa.gov/report). The CISA Reference guide in `docs/` includes reporting steps.
+
+**Q: Is this aligned with CISA's water sector recommendations?**  
+A: Yes. Every detection category maps directly to CISA Alert AA26-097A remediation guidance.
+
+**Q: Can small rural water systems with no IT staff use this?**  
+A: Yes. Both scripts require no installation. Copy to any Windows or Linux machine with network access to the OT subnet and run.
+
+**Q: Is it free?**  
+A: Yes — MIT License, free for all use including commercial and government.
+
+---
+
+## Who This Is For
+
+- **Water utility IT/OT teams** at municipal, county, and rural water authorities
+- **Wastewater treatment plant operators** needing a fast OT exposure check
+- **State drinking water program coordinators** helping small utilities comply with CISA guidance
+- **CISA/EPA regional advisors** supporting water sector cybersecurity assessments
+- **ICS/OT security consultants** adding water sector capabilities to their service offering
+- **Rural water associations** and state primacy agencies supporting small systems
+
+---
+
+## ⭐ Support This Project
+
+If WUP WUP helped your utility find a real exposure, consider:
+
+- ⭐ **Starring this repo** — it helps other water utility security teams find it
+- 🐛 **Opening an issue** if you find a bug or want a new detection added
+- 🤝 **Contributing** — see [CONTRIBUTING.md](./CONTRIBUTING.md)
+- 💬 **Sharing** with your state water association, ISAC, or EPA regional office
+
+> Built by [@spinfosecurity](https://github.com/spinfosecurity) — learning by building free tools that detect and protect critical infrastructure.
+
+---
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
@@ -139,18 +199,10 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 Contributions are welcome from the water sector cybersecurity community! Please read the [Contributing Guide](CONTRIBUTING.md) first.
 
-### How to Contribute
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## Issues & Support
 
-- **Bug Reports**: [Open an issue](https://github.com/spinfosecurity/water-utility-protector/issues)
-- **Feature Requests**: [Request a feature](https://github.com/spinfosecurity/water-utility-protector/issues)
-- **Security Issues**: Please report privately to security@spinfosecurity.com
+- **Bug Reports / Feature Requests**: [Open an issue](https://github.com/spinfosecurity/water-utility-protector/issues)
+- **Security vulnerabilities in this tool**: See [SECURITY.md](./SECURITY.md)
 
 ## References
 
@@ -158,6 +210,7 @@ Contributions are welcome from the water sector cybersecurity community! Please 
 - [FBI IC3](https://www.ic3.gov)
 - [EPA Water Sector Cybersecurity](https://www.epa.gov/watercybersecurity)
 - [CISA Cyber Hygiene Services](https://www.cisa.gov/cyber-hygiene-services)
+- [Security Policy](./SECURITY.md)
 
 ## Disclaimer
 
