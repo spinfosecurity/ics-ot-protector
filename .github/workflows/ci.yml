@@ -6,11 +6,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - shell: pwsh
+      - name: Install PowerShell tools
+        shell: pwsh
         run: |
           Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
-          Get-ChildItem scripts -Recurse -Filter *.ps1 | ForEach-Object {$t=$null;$e=$null;[void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$t,[ref]$e);if($e.Count){throw "Parse error: $($_.FullName)"};Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error,Warning}
-      - shell: bash
+          Install-Module Pester -Scope CurrentUser -Force
+      - name: Lint PowerShell
+        shell: pwsh
         run: |
-          find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+          Get-ChildItem scripts -Recurse -Filter *.ps1 | ForEach-Object {$t=$null;$e=$null;[void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$t,[ref]$e);if($e.Count){throw "Parse error: $($_.FullName)"};Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error,Warning}
+      - name: Run non-networked PowerShell tests
+        shell: pwsh
+        run: Invoke-Pester ./tests/PowerShell -CI -Output Detailed
+      - name: Run non-networked Bash tests
+        shell: bash
+        run: bash tests/bash/repository_tests.sh
+      - name: Confirm project files
+        shell: bash
+        run: |
           test -f CHANGELOG.md && test -f CODE_OF_CONDUCT.md && test -f docs/safe-operation.md && test -f docs/threat-model.md && test -f docs/sample-report.md
