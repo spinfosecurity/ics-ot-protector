@@ -1,0 +1,16 @@
+name: CI
+on: [push, pull_request]
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          Get-ChildItem scripts -Recurse -Filter *.ps1 | ForEach-Object {$t=$null;$e=$null;[void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$t,[ref]$e);if($e.Count){throw "Parse error: $($_.FullName)"};Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error,Warning}
+      - shell: bash
+        run: |
+          find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+          test -f CHANGELOG.md && test -f CODE_OF_CONDUCT.md && test -f docs/safe-operation.md && test -f docs/threat-model.md && test -f docs/sample-report.md
