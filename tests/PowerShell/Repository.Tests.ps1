@@ -1,14 +1,12 @@
-BeforeAll {
-    $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-    $Scripts = Get-ChildItem -Path (Join-Path $Root 'scripts') -Filter '*.ps1' -Recurse
-}
+$Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$ScriptFiles = @(Get-ChildItem -Path (Join-Path $Root 'scripts') -Filter '*.ps1' -Recurse)
 
 Describe 'Water Utility Protector repository' {
     It 'contains at least one PowerShell scanner file' {
-        $Scripts.Count | Should -BeGreaterThan 0
+        $ScriptFiles.Count | Should -BeGreaterThan 0
     }
 
-    It 'has PowerShell scanner files that parse without errors' -ForEach $Scripts {
+    It 'has PowerShell scanner files that parse without errors' -ForEach $ScriptFiles {
         $tokens = $null
         $errors = $null
         [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
