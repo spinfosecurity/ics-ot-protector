@@ -111,8 +111,6 @@ ics-ot-protector/
 │   ├── energy-grid/
 │   ├── bas/
 │   └── rail/
-├── tools/
-│   └── printer-snmp/       # Unrelated SNMP printer utility
 ├── scripts/                # Backward-compat launchers (water only)
 ├── reports/
 └── README.md

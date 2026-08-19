@@ -15,6 +15,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 - **Backward-compatible launchers** for the water scanner at legacy `scripts/` paths
 - **Sector READMEs** with quick-start commands and port coverage tables for each scanner
 
+### Removed
+- **Printer SNMP consumables tooling** — unrelated to ICS/OT scanning; removed from the repository
+
 ### Changed
 - Repository restructured from single-scanner layout to multi-sector monorepo
 - CI updated to lint and test all four sector scanners
