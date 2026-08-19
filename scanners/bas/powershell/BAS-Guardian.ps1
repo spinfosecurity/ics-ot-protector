@@ -3,6 +3,7 @@
 # =============================================================================
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
 Initialize-BasConfig -Config (Import-SectorConfig -Sector 'bas')
 
 function Show-Intro {
@@ -30,7 +31,7 @@ function Show-Intro {
     Write-Host "  + Identifies candidate vendor-specific BMS exposure by port (Honeywell, JCI, Siemens, Tridium)"
     Write-Host "  + Flags unauthenticated BACnet traffic vulnerable to CVE-2026-24060"
     Write-Host "  + Prioritizes findings by severity (CRITICAL vs HIGH)"
-    Write-Host "  + Generates simple text report (optional)"
+    Write-Host "  + Generates JSON scan report (optional)"
     Write-Host ""
     Write-Host "What This Does NOT Do:" -ForegroundColor White
     Write-Host "  - Does NOT test credentials or attempt authentication"
@@ -138,7 +139,7 @@ function Ask-ExportReport {
     Write-Host "  Step 3: Export Options" -ForegroundColor Cyan
     Write-Host "============================================" -ForegroundColor Cyan
     Write-Host ""
-    $answer = Read-Host "  Save scan report to file? (Y/N)"
+    $answer = Read-Host "  Save JSON report to file? (Y/N)"
     $script:ExportReport = ($answer -match '^[Yy]')
 }
 
@@ -165,55 +166,21 @@ function Confirm-Scan {
 function Generate-Report {
     $reportDir = ".\reports"
     if (!(Test-Path $reportDir)) { New-Item -ItemType Directory -Path $reportDir | Out-Null }
-    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    $reportFile = "$reportDir\BASGuardian_Report_$timestamp.txt"
 
-    $content = @()
-    $content += "================================================================================"
-    $content += "  BAS GUARDIAN v2.0 - Building Automation Security Scan Report"
-    $content += "================================================================================"
-    $content += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    $content += "Version: $ScriptVersion | Reference: $Reference"
-    $content += ""
-    $content += "Subnets Scanned:"
-    foreach ($s in $script:Subnets) { $content += "  - $s" }
-    $content += ""
-    $content += "Timeout: $($script:TimeoutMs)ms | Total IPs: $script:TotalScanned | Duration: $($script:ScanDuration)s"
-    $content += ""
-    $content += "FINDINGS: $($script:Findings.Count) total ($script:CriticalCount critical, $script:HighCount high)"
-    $content += ""
-    $content += "--- CRITICAL FINDINGS ---"
-    foreach ($f in $script:Findings) {
-        if ($f.Severity -eq "CRITICAL") {
-            $content += ""
-            $content += "[$($f.IP):$($f.Port)] $($f.Service)"
-            $content += "  $($f.ThreatContext)"
-            $content += "  Action: $($f.Action)"
-        }
+    $result = Export-ScanReport -Findings $script:Findings -OutputDir $reportDir -Prefix 'BAS-results' -Metadata @{
+        sector           = 'bas'
+        scanner          = 'BAS Guardian'
+        version          = $ScriptVersion
+        reference        = $Reference
+        subnets          = ($script:Subnets -join ',')
+        timeout_ms       = $script:TimeoutMs
+        total_scanned    = $script:TotalScanned
+        critical_count   = $script:CriticalCount
+        high_count       = $script:HighCount
+        duration_seconds = $script:ScanDuration
     }
-    $content += ""
-    $content += "--- HIGH FINDINGS ---"
-    foreach ($f in $script:Findings) {
-        if ($f.Severity -eq "HIGH") {
-            $content += ""
-            $content += "[$($f.IP):$($f.Port)] $($f.Service)"
-            $content += "  Action: $($f.Action)"
-        }
-    }
-    $content += ""
-    $content += "RECOMMENDED ACTIONS:"
-    $content += "1. Remove BACnet devices from direct internet exposure"
-    $content += "2. Implement VPN for all remote BMS/HVAC access (RDP/VNC/SSH)"
-    $content += "3. Segment BAS network from corporate IT network"
-    $content += "4. Upgrade to BACnet/SC where possible (encrypted transport)"
-    $content += "5. Patch bacnet-stack to 1.4.3+ (CVE-2026-41503) and monitor CVE-2026-24060"
-    $content += "6. If running Honeywell IQ4x: verify web HMI authentication is ENABLED (CVE-2026-3611)"
-    $content += "7. If running Johnson Controls C-CURE 9000/Victor: patch immediately (ICSA-26-204-01)"
-    $content += "8. If running Siemens Desigo CC/SENTRON Powermanager: apply patch and review privileges"
-    $content += "9. Monitor for unauthorized Who-Is/I-Am broadcast traffic"
 
-    $content | Out-File -FilePath $reportFile -Encoding UTF8
-    return $reportFile
+    return $result.ReportPath
 }
 
 if ($BAS_TEST_MODE -or $global:BAS_TEST_MODE) { return }

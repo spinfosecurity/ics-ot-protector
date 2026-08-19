@@ -3,6 +3,8 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/export_scan_report.sh
+source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_bas_config
 
 # =============================================================================
@@ -61,7 +63,7 @@ show_intro() {
     echo "  + Fingerprints vendor-specific BMS platforms (Honeywell, JCI, Siemens, Tridium)"
     echo "  + Flags unauthenticated BACnet traffic vulnerable to CVE-2026-24060"
     echo "  + Prioritizes findings by severity (CRITICAL vs HIGH)"
-    echo "  + Generates simple text report (optional)"
+    echo "  + Generates JSON scan report (optional)"
     echo ""
     echo "What This Does NOT Do:"
     echo "  - Does NOT test credentials or attempt authentication"
@@ -170,47 +172,29 @@ confirm_scan() {
 generate_report() {
     local report_dir="./reports"
     mkdir -p "$report_dir"
-    local report_file="$report_dir/BASGuardian_Report_$(date +%Y%m%d_%H%M%S).txt"
 
-    {
-        echo "================================================================================"
-        echo "  BAS GUARDIAN v2.0 - Building Automation Security Scan Report"
-        echo "================================================================================"
-        echo "Generated: $(date +"%Y-%m-%d %H:%M:%S")"
-        echo "Version: $SCRIPT_VERSION | Reference: $REFERENCE"
-        echo ""
-        echo "Subnets Scanned:"
-        for s in "${subnets[@]}"; do echo "  - $s"; done
-        echo ""
-        echo "Timeout: $timeout sec | Total IPs: $total_scanned | Duration: ${scan_duration}s"
-        echo ""
-        echo "FINDINGS: ${#findings[@]} total ($critical_count critical, $high_count high)"
-        echo ""
-        echo "--- CRITICAL FINDINGS ---"
-        for f in "${findings[@]}"; do
-            IFS='|' read -r ip port service severity tctx action <<< "$f"
-            [ "$severity" = "CRITICAL" ] && echo -e "\n[$ip:$port] $service\n  $tctx\n  Action: $action"
-        done
-        echo ""
-        echo "--- HIGH FINDINGS ---"
-        for f in "${findings[@]}"; do
-            IFS='|' read -r ip port service severity tctx action <<< "$f"
-            [ "$severity" = "HIGH" ] && echo -e "\n[$ip:$port] $service\n  Action: $action"
-        done
-        echo ""
-        echo "RECOMMENDED ACTIONS:"
-        echo "1. Remove BACnet devices from direct internet exposure"
-        echo "2. Implement VPN for all remote BMS/HVAC access (RDP/VNC/SSH)"
-        echo "3. Segment BAS network from corporate IT network"
-        echo "4. Upgrade to BACnet/SC where possible (encrypted transport)"
-        echo "5. Patch bacnet-stack to 1.4.3+ (CVE-2026-41503) and monitor CVE-2026-24060"
-        echo "6. If running Honeywell IQ4x: verify web HMI authentication is ENABLED (CVE-2026-3611)"
-        echo "7. If running Johnson Controls C-CURE 9000/Victor: patch immediately (ICSA-26-204-01)"
-        echo "8. If running Siemens Desigo CC/SENTRON Powermanager: apply patch and review privileges"
-        echo "9. Monitor for unauthorized Who-Is/I-Am broadcast traffic"
-    } > "$report_file"
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "generate_report requires jq" >&2
+        return 1
+    fi
 
-    echo "$report_file"
+    local findings_json='[]'
+    for f in "${findings[@]}"; do
+        IFS='|' read -r ip port service severity tctx action <<< "$f"
+        findings_json=$(jq -n \
+            --argjson arr "$findings_json" \
+            --arg ts "$(date '+%Y-%m-%dT%H:%M:%S')" \
+            --arg host "$ip" \
+            --argjson port "$port" \
+            --arg service "$service" \
+            --arg severity "$severity" \
+            --arg category "BAS Exposure" \
+            --arg description "$tctx" \
+            --arg remediation "$action" \
+            '$arr + [{Timestamp:$ts, Host:$host, Port:$port, Service:$service, Severity:$severity, Category:$category, Description:$description, Remediation:$remediation}]')
+    done
+
+    export_scan_report_write "$report_dir" "BAS-results" "bas" "BAS Guardian" "$findings_json"
 }
 
 main() {

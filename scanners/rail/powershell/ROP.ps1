@@ -6,7 +6,7 @@
 .DESCRIPTION
     Scans rail/transit OT subnets for exposed remote-access services, ICS protocols,
     EOT/HOT remote linking risk (CVE-2025-1727), and legacy RailSafe SCADA API exposure.
-    Outputs timestamped JSON and CSV reports with CRITICAL/HIGH/MEDIUM severity labels.
+    Outputs timestamped JSON reports with CRITICAL/HIGH/MEDIUM severity labels.
 
 .PARAMETER Subnets
     One or more CIDR subnets to scan. Example: 10.10.20.0/24,10.10.30.0/24
@@ -18,7 +18,7 @@
     Maximum concurrent runspace threads. Range: 1-512. Default: 64.
 
 .PARAMETER OutputDir
-    Directory for JSON and CSV report output. Default: ./reports
+    Directory for JSON report output. Default: ./reports
 
 .PARAMETER EotHotOnly
     Fast-scan mode. Checks only EOT/HOT-related ports (CVE-2025-1727 indicators).
@@ -210,6 +210,16 @@ $pool.Close(); $pool.Dispose()
 Write-Progress -Activity 'Rail-OT-Protector Scanning' -Completed
 
 # Write reports
-$exportPaths = Export-ScanReport -Findings @($script:Findings.ToArray()) -OutputDir $OutputDir -Prefix 'ROP-results'
+$exportPaths = Export-ScanReport -Findings @($script:Findings.ToArray()) -OutputDir $OutputDir -Prefix 'ROP-results' `
+    -Metadata @{
+        sector      = 'rail'
+        scanner     = 'Rail-OT-Protector'
+        version     = '1.0.0'
+        subnets     = ($Subnets -join ',')
+        timeout_ms  = $TimeoutMs
+        threads     = $Threads
+        eot_hot_only = [bool]$EotHotOnly
+        reference   = 'CISA AA26-097A, FBI PSA 2026-08-01'
+    }
 
-Write-Log "Scan complete | Findings: $($script:Findings.Count) | JSON: $($exportPaths.JsonPath) | CSV: $($exportPaths.CsvPath)"
+Write-Log "Scan complete | Findings: $($script:Findings.Count) | Report: $($exportPaths.ReportPath)"

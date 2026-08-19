@@ -1,4 +1,5 @@
-# Unified JSON/CSV export for ICS OT Protector sector scanners.
+# Unified JSON export for ICS OT Protector sector scanners.
+# All scanners write schema_version 1.0 documents with metadata + findings.
 
 function Get-SeverityRank {
     param([string]$Severity)
@@ -15,6 +16,41 @@ function Sort-ScanFindings {
     @($Findings | Sort-Object @{ Expression = { Get-SeverityRank $_.Severity } }, Host, Port)
 }
 
+function ConvertTo-StandardFindings {
+    param([array]$Findings)
+
+    $normalized = foreach ($f in $Findings) {
+        $hostValue = if ($null -ne $f.Host -and "$($f.Host)".Length -gt 0) { "$($f.Host)" }
+                     elseif ($null -ne $f.IP -and "$($f.IP)".Length -gt 0) { "$($f.IP)" }
+                     elseif ($null -ne $f.IpAddress -and "$($f.IpAddress)".Length -gt 0) { "$($f.IpAddress)" }
+                     else { '' }
+
+        $timestamp = if ($f.Timestamp) { "$($f.Timestamp)" } else { (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss') }
+        $category = if ($f.Category) { "$($f.Category)" }
+                   elseif ($f.ThreatType) { "$($f.ThreatType)" }
+                   else { 'General' }
+        $description = if ($f.Description) { "$($f.Description)" }
+                       elseif ($f.ThreatContext) { "$($f.ThreatContext)" }
+                       else { '' }
+        $remediation = if ($f.Remediation) { "$($f.Remediation)" }
+                       elseif ($f.Action) { "$($f.Action)" }
+                       else { '' }
+
+        [pscustomobject]@{
+            Timestamp   = $timestamp
+            Host        = $hostValue
+            Port        = [int]$f.Port
+            Service     = "$($f.Service)"
+            Severity    = "$($f.Severity)"
+            Category    = $category
+            Description = $description
+            Remediation = $remediation
+        }
+    }
+
+    return ,@($normalized)
+}
+
 function Export-ScanReportJson {
     param(
         [Parameter(Mandatory)]
@@ -22,43 +58,27 @@ function Export-ScanReportJson {
         [array]$Findings,
         [Parameter(Mandatory)]
         [string]$Path,
-        [hashtable]$Metadata = @{}
+        [Parameter(Mandatory)]
+        [hashtable]$Metadata
     )
 
-    $ordered = Sort-ScanFindings -Findings $Findings
-    if ($Metadata.Count -gt 0) {
-        $wrapper = [ordered]@{
-            schema_version = '1.0'
-            generated_at   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
-            metadata       = $Metadata
-            findings       = @($ordered)
-        }
-        $wrapper | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $Path -Encoding UTF8
-    } else {
-        $ordered | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $Path -Encoding UTF8
+    $ordered = Sort-ScanFindings -Findings (ConvertTo-StandardFindings -Findings $Findings)
+    $document = [ordered]@{
+        schema_version = '1.0'
+        generated_at   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+        metadata       = $Metadata
+        findings       = @($ordered)
     }
-}
 
-function Export-ScanReportCsv {
-    param(
-        [Parameter(Mandatory)]
-        [AllowEmptyCollection()]
-        [array]$Findings,
-        [Parameter(Mandatory)]
-        [string]$Path
-    )
-
-    $ordered = Sort-ScanFindings -Findings $Findings
-    $ordered | Select-Object Timestamp, Host, Port, Service, Severity, Category, Description, Remediation |
-        Export-Csv -LiteralPath $Path -NoTypeInformation -Encoding UTF8
+    $document | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
 function Export-ScanReport {
     <#
     .SYNOPSIS
-        Writes timestamped JSON and CSV reports from a findings array.
+        Writes a timestamped JSON scan report using the shared schema.
     .OUTPUTS
-        PSCustomObject with JsonPath and CsvPath properties.
+        PSCustomObject with ReportPath property.
     #>
     param(
         [Parameter(Mandatory)]
@@ -68,22 +88,19 @@ function Export-ScanReport {
         [string]$OutputDir,
         [Parameter(Mandatory)]
         [string]$Prefix,
-        [string]$Timestamp = (Get-Date -Format 'yyyyMMdd-HHmmss'),
-        [hashtable]$Metadata = @{}
+        [Parameter(Mandatory)]
+        [hashtable]$Metadata,
+        [string]$Timestamp = (Get-Date -Format 'yyyyMMdd-HHmmss')
     )
 
     if (-not (Test-Path -LiteralPath $OutputDir)) {
         New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
     }
 
-    $jsonPath = Join-Path $OutputDir "${Prefix}-${Timestamp}.json"
-    $csvPath  = Join-Path $OutputDir "${Prefix}-${Timestamp}.csv"
-
-    Export-ScanReportJson -Findings $Findings -Path $jsonPath -Metadata $Metadata
-    Export-ScanReportCsv  -Findings $Findings -Path $csvPath
+    $reportPath = Join-Path $OutputDir "${Prefix}-${Timestamp}.json"
+    Export-ScanReportJson -Findings $Findings -Path $reportPath -Metadata $Metadata
 
     [pscustomobject]@{
-        JsonPath = $jsonPath
-        CsvPath  = $csvPath
+        ReportPath = $reportPath
     }
 }

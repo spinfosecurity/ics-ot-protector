@@ -133,25 +133,13 @@ check_port() {
 # Thread-safe report writer using flock
 # ---------------------------------------------------------------------------
 write_finding() {
-    local report_file="$1"
-    local ip="$2"
-    local port="$3"
-    local label="$4"
-    local severity="$5"
-    local description="$6"
-    local remediation="$7"
+    local ip="$1"
+    local port="$2"
+    local label="$3"
+    local severity="$4"
+    local description="$5"
+    local remediation="$6"
 
-    local timestamp
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local line="[$timestamp] [$severity] ${ip}:${port} - ${label} | ${description} | REMEDIATION: ${remediation}"
-
-    # Thread-safe write
-    (
-        flock -x 200
-        echo "$line" >> "$report_file"
-    ) 200>>"${report_file}.lock"
-
-    # Console output with severity color
     local color="$NC"
     case "$severity" in
         CRITICAL) color="$RED" ;;
@@ -162,15 +150,13 @@ write_finding() {
     echo -e "  ${color}[${severity}]${NC} ${WHITE}${ip}:${port}${NC} - ${color}${label}${NC}"
     echo -e "    ${GRAY}${description}${NC}"
 
-    if [[ -n "${SCAN_REPORT_JSON_TMP:-}" ]]; then
-        local category="General"
-        case "$label" in
-            CVE-*) category="CVE" ;;
-            REMOTE-ACCESS:*) category="RemoteAccess" ;;
-            ICS-PROTOCOL:*) category="ICS" ;;
-        esac
-        export_scan_report_append "$ip" "$port" "$label" "$severity" "$category" "$description" "$remediation"
-    fi
+    local category="General"
+    case "$label" in
+        CVE-*) category="CVE" ;;
+        REMOTE-ACCESS:*) category="RemoteAccess" ;;
+        ICS-PROTOCOL:*) category="ICS" ;;
+    esac
+    export_scan_report_append "$ip" "$port" "$label" "$severity" "$category" "$description" "$remediation"
 }
 
 # ---------------------------------------------------------------------------
@@ -203,10 +189,7 @@ show_banner
 # Prepare output directory
 mkdir -p "$OUTPUT_DIR" || { echo "[-] Cannot create output directory: $OUTPUT_DIR" >&2; exit 1; }
 
-TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-REPORT_FILE="${OUTPUT_DIR}/EGP_Report_${TIMESTAMP}.txt"
-LOCK_FILE="${REPORT_FILE}.lock"
-export_scan_report_init "$OUTPUT_DIR" "EGP-results"
+export_scan_report_init "$OUTPUT_DIR" "EGP-results" "energy-grid" "Energy Grid Protector"
 
 if [[ "$CVE_ONLY" == true ]]; then
     MODE_LABEL="CVE-ONLY (fast-scan)"
@@ -214,24 +197,10 @@ else
     MODE_LABEL="FULL SCAN"
 fi
 
-# Initialize report
-cat > "$REPORT_FILE" <<EOF
-Energy Grid Protector (EGP) v1.0.0
-Scan Mode    : $MODE_LABEL
-Target Subnet: $SUBNET
-Timeout      : ${TIMEOUT}s
-Scan Started : $(date '+%Y-%m-%d %H:%M:%S')
-Reference    : CISA Alert AA26-097A | FBI PSA 2026-08-01
-Repository   : https://github.com/spinfosecurity/ics-ot-protector
-=======================================================================
-EOF
-
-touch "$LOCK_FILE"
-
 echo -e "${CYAN}[*] Mode       : ${MODE_LABEL}${NC}"
 echo -e "${CYAN}[*] Target     : ${SUBNET}${NC}"
 echo -e "${CYAN}[*] Timeout    : ${TIMEOUT}s per port${NC}"
-echo -e "${CYAN}[*] Report     : ${REPORT_FILE}${NC}"
+echo -e "${CYAN}[*] Output Dir : ${OUTPUT_DIR}${NC}"
 echo ""
 
 # Extract base prefix from /24 CIDR
@@ -258,7 +227,7 @@ for i in $(seq 1 254); do
         for port in "${port_list[@]}"; do
             if check_port "$IP" "$port" 2>/dev/null; then
                 echo ""
-                write_finding "$REPORT_FILE" "$IP" "$port" "$cve_id" "$severity" "$description" "$remediation"
+                write_finding "$IP" "$port" "$cve_id" "$severity" "$description" "$remediation"
                 FINDINGS=$((FINDINGS + 1))
             fi
         done
@@ -270,7 +239,7 @@ for i in $(seq 1 254); do
             IFS='|' read -r name severity description <<< "${remote_access_ports[$port]}"
             if check_port "$IP" "$port" 2>/dev/null; then
                 echo ""
-                write_finding "$REPORT_FILE" "$IP" "$port" "REMOTE-ACCESS:${name}" "$severity" "$description" "See docs/CISA-Reference.md"
+                write_finding "$IP" "$port" "REMOTE-ACCESS:${name}" "$severity" "$description" "See docs/CISA-Reference.md"
                 FINDINGS=$((FINDINGS + 1))
             fi
         done
@@ -280,7 +249,7 @@ for i in $(seq 1 254); do
             IFS='|' read -r name severity description <<< "${ics_ports[$port]}"
             if check_port "$IP" "$port" 2>/dev/null; then
                 echo ""
-                write_finding "$REPORT_FILE" "$IP" "$port" "ICS-PROTOCOL:${name}" "$severity" "$description" "See docs/Threat-Intelligence.md"
+                write_finding "$IP" "$port" "ICS-PROTOCOL:${name}" "$severity" "$description" "See docs/Threat-Intelligence.md"
                 FINDINGS=$((FINDINGS + 1))
             fi
         done
@@ -289,29 +258,7 @@ done
 
 echo ""
 
-# Summary
-SUMMARY=$(cat <<EOF
-
-=======================================================================
-SCAN COMPLETE
-Hosts Scanned : $HOSTS_SCANNED
-Findings      : $FINDINGS
-Scan Ended    : $(date '+%Y-%m-%d %H:%M:%S')
-Report Saved  : $REPORT_FILE
-
-REMEDIATION RESOURCES:
-  CISA Alert AA26-097A  : https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-097a
-  FBI PSA 2026-08-01    : https://www.fbi.gov/
-  CISA ICS Advisories   : https://www.cisa.gov/news-events/ics-advisories
-  Report Vulnerabilities: https://www.cisa.gov/report
-=======================================================================
-EOF
-)
-
-echo "$SUMMARY" >> "$REPORT_FILE"
-rm -f "$LOCK_FILE"
-
-IFS='|' read -r JSON_REPORT CSV_REPORT < <(export_scan_report_finalize)
+JSON_REPORT="$(export_scan_report_finalize)"
 
 echo -e "${CYAN}============================================================${NC}"
 echo -e "  ${GREEN}SCAN COMPLETE${NC}"
@@ -321,9 +268,7 @@ if (( FINDINGS > 0 )); then
 else
     echo -e "  ${GREEN}Findings      : ${FINDINGS}${NC}"
 fi
-echo -e "  ${WHITE}Report Saved  : ${REPORT_FILE}${NC}"
-echo -e "  ${WHITE}JSON Report   : ${JSON_REPORT}${NC}"
-echo -e "  ${WHITE}CSV Report    : ${CSV_REPORT}${NC}"
+echo -e "  ${WHITE}Report Saved  : ${JSON_REPORT}${NC}"
 echo -e "${CYAN}============================================================${NC}"
 echo ""
 if (( FINDINGS > 0 )); then

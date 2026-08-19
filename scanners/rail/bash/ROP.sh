@@ -12,6 +12,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/export_scan_report.sh
+source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_rail_config
 
 # ---------------------------------------------------------------------------
@@ -76,6 +78,7 @@ done
 }
 
 mkdir -p "$OUTPUT_DIR"
+export_scan_report_init "$OUTPUT_DIR" "ROP-results" "rail" "Rail-OT-Protector"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -127,44 +130,12 @@ build_port_catalog() {
   fi
 }
 
-# ---------------------------------------------------------------------------
-# Thread-safe write (spin-lock via mkdir atomicity)
-# ---------------------------------------------------------------------------
-LOCK_DIR="$(mktemp -d)"
-JSON_TMP="$(mktemp)"
-echo '[]' > "$JSON_TMP"
-
-timestamp_file="$(date +%Y%m%d-%H%M%S)"
-CSV_PATH="$OUTPUT_DIR/ROP-results-$timestamp_file.csv"
-JSON_PATH="$OUTPUT_DIR/ROP-results-$timestamp_file.json"
-printf 'Timestamp,Host,Port,Service,Severity,Category,Description\n' > "$CSV_PATH"
-
 write_finding() {
   local host="$1" port="$2" service="$3" severity="$4" category="$5" description="$6"
-  local ts; ts=$(date '+%Y-%m-%dT%H:%M:%S')
-
-  # Acquire lock
-  while ! mkdir "$LOCK_DIR/write.lock" 2>/dev/null; do sleep 0.005; done
-
-  # CSV
-  printf '%s,%s,%s,"%s",%s,%s,"%s"\n' \
-    "$ts" "$host" "$port" "$service" "$severity" "$category" "$description" >> "$CSV_PATH"
-
-  # JSON (requires jq)
-  if command -v jq &>/dev/null; then
-    jq --arg ts "$ts" --arg h "$host" --argjson p "$port" \
-       --arg svc "$service" --arg sev "$severity" \
-       --arg cat "$category" --arg desc "$description" \
-       '. += [{Timestamp:$ts,Host:$h,Port:$p,Service:$svc,Severity:$sev,Category:$cat,Description:$desc}]' \
-       "$JSON_TMP" > "${JSON_TMP}.next" && mv "${JSON_TMP}.next" "$JSON_TMP"
-  fi
-
-  rmdir "$LOCK_DIR/write.lock"
-
+  export_scan_report_append "$host" "$port" "$service" "$severity" "$category" "$description" ""
   printf '[%s] [%s] %s:%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$severity" "$host" "$port" "$description"
 }
-export -f write_finding log
-export LOCK_DIR JSON_TMP CSV_PATH
+export -f write_finding log export_scan_report_append
 
 # ---------------------------------------------------------------------------
 # Per-host scan worker
@@ -185,8 +156,8 @@ scan_host() {
     fi
   done
 }
-export -f scan_host
-export TIMEOUT_MS
+export -f scan_host export_scan_report_append
+export TIMEOUT_MS SCAN_REPORT_JSON_TMP SCAN_REPORT_LOCK_DIR
 
 # ---------------------------------------------------------------------------
 # Build targets
@@ -229,8 +200,7 @@ wait
 printf '\n'
 
 # ---------------------------------------------------------------------------
-# Finalize reports
+# Finalize report
 # ---------------------------------------------------------------------------
-mv "$JSON_TMP" "$JSON_PATH"
-rm -rf "$LOCK_DIR"
-log INFO "Scan complete | CSV: $CSV_PATH | JSON: $JSON_PATH"
+JSON_PATH="$(export_scan_report_finalize)"
+log INFO "Scan complete | Report: $JSON_PATH"
