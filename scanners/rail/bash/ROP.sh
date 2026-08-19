@@ -9,6 +9,11 @@
 # =============================================================================
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../_shared/load_sector_config.sh
+source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+initialize_rail_config
+
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
@@ -116,31 +121,10 @@ expand_cidr() {
 declare -a PORTS=()
 build_port_catalog() {
   if [[ "$EOT_HOT_ONLY" -eq 1 ]]; then
-    PORTS=(
-      "4510|EOT/HOT Remote Linking|CRITICAL|EotHot|Potential EOT/HOT remote linking service detected (CVE-2025-1727) — Wabtec TrainLink NG/NG3/NG4/NG5 Siemens Trainguard DPS Electronics"
-      "4511|EOT/HOT Remote Linking (alt)|CRITICAL|EotHot|Potential EOT/HOT remote linking backup channel detected (CVE-2025-1727)"
-    )
-    return
+    build_rail_port_catalog eothot
+  else
+    build_rail_port_catalog all
   fi
-  PORTS=(
-    "4510|EOT/HOT Remote Linking|CRITICAL|EotHot|Potential EOT/HOT remote linking service detected (CVE-2025-1727) — Wabtec TrainLink NG/NG3/NG4/NG5 Siemens Trainguard DPS Electronics"
-    "4511|EOT/HOT Remote Linking (alt)|CRITICAL|EotHot|Potential EOT/HOT remote linking backup channel detected (CVE-2025-1727)"
-    "28784|RailSafe Control Interface|HIGH|RailSafe|RailSafe Control Interface fingerprint matched legacy API version family (v1.0/1.1/2.0 MitM/replay risk 13 years unpatched)"
-    "21|FTP|HIGH|RemoteAccess|FTP exposed on OT network — plaintext credential risk"
-    "22|SSH|MEDIUM|RemoteAccess|SSH reachable from scan host — review access policy"
-    "23|Telnet|HIGH|RemoteAccess|Telnet exposed on OT network — plaintext credential risk"
-    "80|HTTP|MEDIUM|RemoteAccess|HTTP management interface reachable — review access and authentication"
-    "443|HTTPS|MEDIUM|RemoteAccess|HTTPS management interface reachable — validate certificate and access controls"
-    "3389|RDP|HIGH|RemoteAccess|RDP exposed on OT subnet — restrict immediately per CISA AA26-097A"
-    "5900|VNC|HIGH|RemoteAccess|VNC exposed on OT subnet — restrict immediately per FBI PSA 2026-08-01"
-    "5901|VNC (alt display)|HIGH|RemoteAccess|Alternate VNC display port exposed on OT subnet — review per FBI PSA 2026-08-01"
-    "102|S7/IEC 60870|HIGH|ICS|S7/IEC 60870 service reachable — validate OT network segmentation"
-    "502|Modbus|HIGH|ICS|Modbus service reachable from scan host — validate segmentation"
-    "2222|EtherNet/IP (implicit)|HIGH|ICS|EtherNet/IP implicit messaging port reachable — validate segmentation"
-    "2404|IEC 60870-5-104|HIGH|ICS|IEC 60870-5-104 reachable from scan host — validate segmentation"
-    "20000|DNP3|HIGH|ICS|DNP3 service reachable from scan host — validate segmentation"
-    "44818|EtherNet/IP (explicit)|HIGH|ICS|EtherNet/IP explicit messaging port reachable — validate segmentation"
-  )
 }
 
 # ---------------------------------------------------------------------------

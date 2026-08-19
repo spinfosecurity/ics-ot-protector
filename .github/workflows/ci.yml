@@ -23,9 +23,15 @@ jobs:
       - name: Run monorepo PowerShell tests
         shell: pwsh
         run: Invoke-Pester (Get-ChildItem -Path ./tests -Recurse -Filter *.Tests.ps1) -CI -Output Detailed
+      - name: Validate and compile sector configs
+        shell: bash
+        run: |
+          pip install pyyaml -q
+          bash tests/shared/bash/validate_configs.sh
       - name: Run monorepo Bash tests
         shell: bash
         run: |
+          bash tests/shared/bash/config_behavioral_tests.sh
           bash tests/shared/bash/repository_tests.sh
           bash tests/water/bash/repository_tests.sh
           bash tests/water/bash/behavioral_tests.sh

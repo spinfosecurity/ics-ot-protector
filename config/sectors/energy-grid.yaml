@@ -1,0 +1,88 @@
+sector: energy-grid
+metadata:
+  name: Energy Grid Protector
+  short_name: EGP
+  version: "1.0.0"
+  reference: CISA Alert AA26-097A | FBI PSA 2026-08-01
+
+cve_checks:
+  CVE-2026-42945:
+    description: "Hitachi Energy e-mesh EMS (v4.1.6, v4.4.2, v4.7.0) - Interoperability/standardization layer flaw in substation EMS. Unauthenticated network access may lead to service disruption or unauthorized control."
+    ports: [80, 443, 8080, 8443]
+    severity: CRITICAL
+    remediation: "Apply Hitachi Energy patch immediately. Isolate EMS management interfaces behind VPN/firewall. See CISA ICS Advisory and docs/CISA-Reference.md"
+  CVE-2025-1445:
+    description: "Hitachi Energy / ABB / B&R shared hardware vulnerability - Improper input validation, out-of-bounds write, memory buffer restriction failure. Affects ABB ACS880 drives with IEC 61131-3 license."
+    ports: [102, 2404, 44818, 2222]
+    severity: CRITICAL
+    remediation: "Update firmware per vendor advisories. Restrict network access to drives. Apply IEC 62443 network segmentation. See docs/CISA-Reference.md"
+  CVE-2025-13162:
+    description: "ABB Advant Master Online Builder / 800xA - Uncontrolled search path element enabling arbitrary code execution via unrestricted DLL directory hijacking."
+    ports: [135, 445, 8080]
+    severity: HIGH
+    remediation: "Apply ABB Security Advisory patch. Restrict write permissions on DLL search paths. Use application allowlisting. See docs/CISA-Reference.md"
+  RTU500-MULTI-CVE:
+    description: "Hitachi Energy RTU500 Series - Multiple disclosed vulnerabilities including authentication bypass, denial of service, and improper certificate validation across RTU500 product line."
+    ports: [20000, 2404, 102, 443]
+    severity: HIGH
+    remediation: "Upgrade RTU500 firmware to latest patched version. Enforce certificate validation. Restrict DNP3/IEC104 access to known master stations. See docs/Threat-Intelligence.md"
+
+remote_access_ports:
+  - port: 3389
+    name: RDP
+    severity: HIGH
+    description: "Remote Desktop Protocol exposed on OT network. CISA AA26-097A and FBI PSA 2026-08-01 document active exploitation. Remove or restrict immediately."
+  - port: 5900
+    name: VNC
+    severity: CRITICAL
+    description: "VNC port 5900 exposed. FBI PSA 2026-08-01 warns of active VNC exploitation against ICS environments. Disable or place behind VPN."
+  - port: 5901
+    name: VNC-1
+    severity: CRITICAL
+    description: "VNC port 5901 exposed. FBI PSA 2026-08-01 warns of active VNC exploitation against ICS environments. Disable or place behind VPN."
+  - port: 22
+    name: SSH
+    severity: MEDIUM
+    description: "SSH port open on OT host. Ensure key-based auth only, disable password auth, restrict to jump host access."
+  - port: 23
+    name: Telnet
+    severity: CRITICAL
+    description: "Telnet transmits credentials in cleartext. Immediate removal required on all OT/SCADA assets per CISA guidance."
+  - port: 21
+    name: FTP
+    severity: HIGH
+    description: "FTP transmits data and credentials in cleartext. Replace with SFTP or SCP. Active ICS malware campaigns use FTP for lateral movement."
+  - port: 80
+    name: HTTP
+    severity: MEDIUM
+    description: "Unencrypted HTTP web interface exposed. Migrate to HTTPS. Restrict web management to operations VLAN only."
+  - port: 443
+    name: HTTPS
+    severity: MEDIUM
+    description: "HTTPS web interface exposed. Verify certificate validity, disable legacy TLS versions, restrict to authorized clients."
+
+ics_ports:
+  - port: 20000
+    name: DNP3
+    severity: HIGH
+    description: "DNP3 (IEEE 1815) exposed. Lacks authentication in many implementations. CISA AA26-097A: Iranian actors probing DNP3 on grid assets."
+  - port: 502
+    name: Modbus
+    severity: HIGH
+    description: "Modbus TCP exposed. No native authentication or encryption. Restrict to known master station IPs via ACL."
+  - port: 102
+    name: IEC-61850/S7
+    severity: HIGH
+    description: "IEC 61850 MMS / Siemens S7 port exposed. Verify device identity and restrict to authorized engineering workstations."
+  - port: 2404
+    name: IEC-60870-5-104
+    severity: HIGH
+    description: "IEC 60870-5-104 (IEC104) exposed. Used for SCADA control. Restrict to designated control center IP ranges."
+  - port: 44818
+    name: EtherNet/IP
+    severity: MEDIUM
+    description: "EtherNet/IP (CIP) exposed. Verify this is intentional. Restrict to PLC management VLAN and engineering stations."
+  - port: 2222
+    name: EtherNet/IP-IO
+    severity: MEDIUM
+    description: "EtherNet/IP implicit I/O port exposed. Should not be reachable from non-OT VLANs. Review network segmentation."

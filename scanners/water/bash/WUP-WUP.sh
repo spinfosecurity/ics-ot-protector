@@ -36,8 +36,10 @@
 
 set -euo pipefail
 
-SCRIPT_VERSION="3.4.0"
-SCRIPT_REFERENCE="CISA Alert AA26-097A (2026-07-30)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../_shared/load_sector_config.sh
+source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+initialize_water_config
 
 # ---------------------------------------------------------------------------- #
 # Color helpers
@@ -57,49 +59,16 @@ c()  { printf "${1}%s${RESET}" "$2"; }
 cl() { printf "${1}%s${RESET}\n" "$2"; }
 
 # ---------------------------------------------------------------------------- #
-# Port / protocol tables
+# Port / protocol tables loaded from config/sectors/water.yaml
 # ---------------------------------------------------------------------------- #
 
-# Remote access ports: "PORT|SERVICE_LABEL|SEVERITY"
-declare -a REMOTE_ACCESS_PORTS=(
-    "3389|RDP (Remote Desktop) - #1 attack vector|CRITICAL"
-    "5900|VNC (Virtual Network Computing) - Active exploitation|CRITICAL"
-    "5901|VNC Alternate|CRITICAL"
-    "22|SSH (Secure Shell) - CISA-flagged in water attacks|CRITICAL"
-    "80|HTTP (Web HMI)|HIGH"
-    "443|HTTPS (Web HMI)|HIGH"
-    "8080|HTTP Alternate (Web HMI)|HIGH"
-    "8443|HTTPS Alternate (Web HMI)|HIGH"
-)
-
-# OT protocol ports: "PORT|PROTOCOL_LABEL"
-declare -a OT_PROTOCOL_PORTS=(
-    "44818|EtherNet/IP (CIP) - Rockwell/Allen-Bradley [TARGETED]"
-    "2222|EtherNet/IP Alternate - CISA-flagged"
-    "502|Modbus TCP - Unauthenticated protocol"
-    "102|S7 Comm (Siemens SIMATIC)"
-    "20000|DNP3 - Water sector common"
-    "47808|BACnet/IP - Building/HVAC integration"
-    "20256|UniLogic (Unitronics Vision PLC)"
-)
-
-# ThreatContext lookup
 get_threat_context() {
     local key="$1"
-    case "$key" in
-        RDP)         echo "PRIMARY ATTACK VECTOR - 70% of water sector breaches (CISA 2026)" ;;
-        VNC)         echo "Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)" ;;
-        SSH)         echo "CISA-flagged in July 2026 water sector attacks" ;;
-        EtherNet/IP) echo "Rockwell MicroLogix 1400 targeted (4,148 exposed globally)" ;;
-        Modbus)      echo "Unauthenticated - easily manipulated (CVSS 9.3)" ;;
-        S7)          echo "Siemens SIMATIC S7-1200 (4,117 exposed globally)" ;;
-        HTTP)        echo "Internet-exposed Web HMI per CISA/EPA joint advisory" ;;
-        HTTPS)       echo "Internet-exposed Web HMI per CISA/EPA joint advisory" ;;
-        DNP3)        echo "Water sector SCADA protocol - no encryption" ;;
-        UniLogic)    echo "Unitronics Vision PLC - default password '1111'" ;;
-        BACnet/IP)   echo "Building/HVAC integration protocol - no authentication" ;;
-        *)           echo "Exposed service — review access controls" ;;
-    esac
+    if [[ -n "${THREAT_CONTEXT[$key]:-}" ]]; then
+        echo "${THREAT_CONTEXT[$key]}"
+    else
+        echo "Exposed service — review access controls"
+    fi
 }
 
 # ---------------------------------------------------------------------------- #

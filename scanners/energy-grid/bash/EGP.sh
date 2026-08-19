@@ -27,6 +27,11 @@
 
 set -uo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../_shared/load_sector_config.sh
+source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+initialize_energy_grid_config
+
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
@@ -58,8 +63,9 @@ usage() {
 }
 
 # ---------------------------------------------------------------------------
-# Parse arguments
+# Parse arguments (only when executed directly)
 # ---------------------------------------------------------------------------
+parse_args() {
 while getopts ":s:t:o:ch" opt; do
     case $opt in
         s) SUBNET="$OPTARG" ;;
@@ -71,6 +77,7 @@ while getopts ":s:t:o:ch" opt; do
         \?) echo "[-] Unknown option: -$OPTARG" >&2; exit 1 ;;
     esac
 done
+}
 
 # ---------------------------------------------------------------------------
 # Input validation
@@ -155,40 +162,8 @@ write_finding() {
 }
 
 # ---------------------------------------------------------------------------
-# CVE definitions
-# Format: "port1,port2,...|Description|Severity|Remediation"
+# Port/CVE definitions loaded from config/sectors/energy-grid.yaml
 # ---------------------------------------------------------------------------
-declare -A cve_checks
-cve_checks["CVE-2026-42945"]="80,443,8080,8443|Hitachi Energy e-mesh EMS (v4.1.6 v4.4.2 v4.7.0) - Interoperability/standardization layer flaw in substation EMS. Unauthenticated network access may lead to service disruption or unauthorized control.|CRITICAL|Apply Hitachi Energy patch. Isolate EMS behind VPN/firewall. See docs/CISA-Reference.md"
-cve_checks["CVE-2025-1445"]="102,2404,44818,2222|Hitachi Energy/ABB/B&R shared hardware vulnerability - Improper input validation out-of-bounds write memory buffer restriction failure. Affects ABB ACS880 drives with IEC 61131-3 license.|CRITICAL|Update firmware per vendor advisories. Apply IEC 62443 network segmentation. See docs/CISA-Reference.md"
-cve_checks["CVE-2025-13162"]="135,445,8080|ABB Advant Master Online Builder / 800xA - Uncontrolled search path element enabling arbitrary code execution via unrestricted DLL directory hijacking.|HIGH|Apply ABB Security Advisory patch. Restrict DLL search path write permissions. Use application allowlisting. See docs/CISA-Reference.md"
-cve_checks["RTU500-MULTI-CVE"]="20000,2404,102,443|Hitachi Energy RTU500 Series - Multiple disclosed vulnerabilities: authentication bypass denial of service improper certificate validation across RTU500 product line.|HIGH|Upgrade RTU500 firmware to patched version. Enforce certificate validation. Restrict DNP3/IEC104 access to known master stations. See docs/Threat-Intelligence.md"
-
-# ---------------------------------------------------------------------------
-# Remote-access port definitions
-# Format: "Name|Severity|Description"
-# ---------------------------------------------------------------------------
-declare -A remote_access_ports
-remote_access_ports[3389]="RDP|HIGH|Remote Desktop Protocol exposed on OT network. CISA AA26-097A and FBI PSA 2026-08-01 document active exploitation. Remove or restrict immediately."
-remote_access_ports[5900]="VNC|CRITICAL|VNC port 5900 exposed. FBI PSA 2026-08-01 warns of active VNC exploitation against ICS environments. Disable or place behind VPN."
-remote_access_ports[5901]="VNC-1|CRITICAL|VNC port 5901 exposed. FBI PSA 2026-08-01 warns of active VNC exploitation against ICS environments. Disable or place behind VPN."
-remote_access_ports[22]="SSH|MEDIUM|SSH port open on OT host. Ensure key-based auth only disable password auth restrict to jump host access."
-remote_access_ports[23]="Telnet|CRITICAL|Telnet transmits credentials in cleartext. Immediate removal required on all OT/SCADA assets per CISA guidance."
-remote_access_ports[21]="FTP|HIGH|FTP transmits data and credentials in cleartext. Replace with SFTP or SCP. Active ICS malware campaigns use FTP for lateral movement."
-remote_access_ports[80]="HTTP|MEDIUM|Unencrypted HTTP web interface exposed. Migrate to HTTPS. Restrict to operations VLAN only."
-remote_access_ports[443]="HTTPS|MEDIUM|HTTPS web interface exposed. Verify certificate validity disable legacy TLS restrict to authorized clients."
-
-# ---------------------------------------------------------------------------
-# ICS protocol port definitions
-# Format: "Name|Severity|Description"
-# ---------------------------------------------------------------------------
-declare -A ics_ports
-ics_ports[20000]="DNP3|HIGH|DNP3 (IEEE 1815) exposed. Lacks authentication in many implementations. CISA AA26-097A: Iranian actors probing DNP3 on grid assets."
-ics_ports[502]="Modbus|HIGH|Modbus TCP exposed. No native authentication or encryption. Restrict to known master station IPs via ACL."
-ics_ports[102]="IEC-61850-S7|HIGH|IEC 61850 MMS / Siemens S7 port exposed. Verify device identity and restrict to authorized engineering workstations."
-ics_ports[2404]="IEC-60870-5-104|HIGH|IEC 60870-5-104 (IEC104) exposed. Used for SCADA control. Restrict to designated control center IP ranges."
-ics_ports[44818]="EtherNetIP|MEDIUM|EtherNet/IP (CIP) exposed. Restrict to PLC management VLAN and engineering stations."
-ics_ports[2222]="EtherNetIP-IO|MEDIUM|EtherNet/IP implicit I/O port exposed. Should not be reachable from non-OT VLANs. Review network segmentation."
 
 # ---------------------------------------------------------------------------
 # Banner
@@ -208,6 +183,8 @@ show_banner() {
 # ---------------------------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------------------------
+run_egp_scan() {
+parse_args "$@"
 validate_inputs
 show_banner
 
@@ -335,4 +312,9 @@ echo ""
 if (( FINDINGS > 0 )); then
     echo -e "${RED}[!] ACTION REQUIRED: Review findings and apply remediations.${NC}"
     echo -e "${YELLOW}    See docs/CISA-Reference.md and docs/Threat-Intelligence.md${NC}"
+fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  run_egp_scan "$@"
 fi

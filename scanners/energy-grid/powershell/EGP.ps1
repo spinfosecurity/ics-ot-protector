@@ -66,6 +66,9 @@ param (
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+Initialize-EnergyGridConfig -Config (Import-SectorConfig -Sector 'energy-grid')
+
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
@@ -118,60 +121,8 @@ function Test-TcpPort {
 }
 
 # ---------------------------------------------------------------------------
-# CVE definitions
+# CVE / port definitions loaded from config/sectors/energy-grid.yaml
 # ---------------------------------------------------------------------------
-$CveChecks = [ordered]@{
-    'CVE-2026-42945' = @{
-        Description = 'Hitachi Energy e-mesh EMS (v4.1.6, v4.4.2, v4.7.0) - Interoperability/standardization layer flaw in substation EMS. Unauthenticated network access may lead to service disruption or unauthorized control.'
-        Ports       = @(80, 443, 8080, 8443)
-        Severity    = 'CRITICAL'
-        Remediation = 'Apply Hitachi Energy patch immediately. Isolate EMS management interfaces behind VPN/firewall. See CISA ICS Advisory and docs/CISA-Reference.md'
-    }
-    'CVE-2025-1445' = @{
-        Description = 'Hitachi Energy / ABB / B&R shared hardware vulnerability - Improper input validation, out-of-bounds write, memory buffer restriction failure. Affects ABB ACS880 drives with IEC 61131-3 license.'
-        Ports       = @(102, 2404, 44818, 2222)
-        Severity    = 'CRITICAL'
-        Remediation = 'Update firmware per vendor advisories. Restrict network access to drives. Apply IEC 62443 network segmentation. See docs/CISA-Reference.md'
-    }
-    'CVE-2025-13162' = @{
-        Description = 'ABB Advant Master Online Builder / 800xA - Uncontrolled search path element enabling arbitrary code execution via unrestricted DLL directory hijacking.'
-        Ports       = @(135, 445, 8080)
-        Severity    = 'HIGH'
-        Remediation = 'Apply ABB Security Advisory patch. Restrict write permissions on DLL search paths. Use application allowlisting. See docs/CISA-Reference.md'
-    }
-    'RTU500-MULTI-CVE' = @{
-        Description = 'Hitachi Energy RTU500 Series - Multiple disclosed vulnerabilities including authentication bypass, denial of service, and improper certificate validation across RTU500 product line.'
-        Ports       = @(20000, 2404, 102, 443)
-        Severity    = 'HIGH'
-        Remediation = 'Upgrade RTU500 firmware to latest patched version. Enforce certificate validation. Restrict DNP3/IEC104 access to known master stations. See docs/Threat-Intelligence.md'
-    }
-}
-
-# ---------------------------------------------------------------------------
-# Remote-access port definitions
-# ---------------------------------------------------------------------------
-$RemoteAccessPorts = [ordered]@{
-    3389  = @{ Name = 'RDP';    Severity = 'HIGH';   Description = 'Remote Desktop Protocol exposed on OT network. CISA AA26-097A and FBI PSA 2026-08-01 document active exploitation. Remove or restrict immediately.' }
-    5900  = @{ Name = 'VNC';   Severity = 'CRITICAL'; Description = 'VNC port 5900 exposed. FBI PSA 2026-08-01 warns of active VNC exploitation against ICS environments. Disable or place behind VPN.' }
-    5901  = @{ Name = 'VNC-1'; Severity = 'CRITICAL'; Description = 'VNC port 5901 exposed. FBI PSA 2026-08-01 warns of active VNC exploitation against ICS environments. Disable or place behind VPN.' }
-    22    = @{ Name = 'SSH';    Severity = 'MEDIUM';  Description = 'SSH port open on OT host. Ensure key-based auth only, disable password auth, restrict to jump host access.' }
-    23    = @{ Name = 'Telnet'; Severity = 'CRITICAL'; Description = 'Telnet transmits credentials in cleartext. Immediate removal required on all OT/SCADA assets per CISA guidance.' }
-    21    = @{ Name = 'FTP';    Severity = 'HIGH';    Description = 'FTP transmits data and credentials in cleartext. Replace with SFTP or SCP. Active ICS malware campaigns use FTP for lateral movement.' }
-    80    = @{ Name = 'HTTP';   Severity = 'MEDIUM';  Description = 'Unencrypted HTTP web interface exposed. Migrate to HTTPS. Restrict web management to operations VLAN only.' }
-    443   = @{ Name = 'HTTPS';  Severity = 'MEDIUM';  Description = 'HTTPS web interface exposed. Verify certificate validity, disable legacy TLS versions, restrict to authorized clients.' }
-}
-
-# ---------------------------------------------------------------------------
-# ICS protocol port definitions
-# ---------------------------------------------------------------------------
-$IcsPorts = [ordered]@{
-    20000 = @{ Name = 'DNP3';          Severity = 'HIGH';   Description = 'DNP3 (IEEE 1815) exposed. Lacks authentication in many implementations. CISA AA26-097A: Iranian actors probing DNP3 on grid assets.' }
-    502   = @{ Name = 'Modbus';        Severity = 'HIGH';   Description = 'Modbus TCP exposed. No native authentication or encryption. Restrict to known master station IPs via ACL.' }
-    102   = @{ Name = 'IEC-61850/S7';  Severity = 'HIGH';   Description = 'IEC 61850 MMS / Siemens S7 port exposed. Verify device identity and restrict to authorized engineering workstations.' }
-    2404  = @{ Name = 'IEC-60870-5-104'; Severity = 'HIGH'; Description = 'IEC 60870-5-104 (IEC104) exposed. Used for SCADA control. Restrict to designated control center IP ranges.' }
-    44818 = @{ Name = 'EtherNet/IP';   Severity = 'MEDIUM'; Description = 'EtherNet/IP (CIP) exposed. Verify this is intentional. Restrict to PLC management VLAN and engineering stations.' }
-    2222  = @{ Name = 'EtherNet/IP-IO'; Severity = 'MEDIUM'; Description = 'EtherNet/IP implicit I/O port exposed. Should not be reachable from non-OT VLANs. Review network segmentation.' }
-}
 
 # ---------------------------------------------------------------------------
 # Parse /24 subnet into list of host IPs
@@ -217,8 +168,10 @@ function Write-Finding {
 }
 
 # ---------------------------------------------------------------------------
-# MAIN
+# MAIN (skipped when $EGP_TEST_MODE is set before dot-sourcing)
 # ---------------------------------------------------------------------------
+if ($EGP_TEST_MODE -or $global:EGP_TEST_MODE) { return }
+
 Show-Banner
 
 # Validate and prepare output directory

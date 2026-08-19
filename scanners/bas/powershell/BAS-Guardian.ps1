@@ -1,65 +1,9 @@
 # =============================================================================
-# BAS Guardian v2.0 - Building Automation System Protector
-# Cybersecurity Scanner for BACnet/HVAC/Building Management Systems
-# Enhanced with 2026 CISA ICS Advisories & Vendor-Specific CVE Intelligence
+# BAS Guardian - configuration loaded from config/sectors/bas.yaml
 # =============================================================================
 
-$ScriptName = "BAS Guardian"
-$ScriptVersion = "2.0.0"
-$ScriptTagline = "BAS Guardian - Protecting Building Automation from Cyber Threats"
-$Reference = "CISA ICSA-26-069-03 | ICSA-26-204-01 | CVE-2026-3611 | CVE-2026-24060"
-
-$CriticalBASPorts = @{
-    47808 = "BACnet/IP - Unauthenticated protocol (CVE-2026-24060 exposure candidate)"
-    47809 = "BACnet/IP Alternate"
-    4800  = "BACnet/SC (Secure Connect) - WebSocket"
-    1628  = "LonWorks/LonTalk - Building automation"
-    1629  = "LonWorks Alternate"
-    47800 = "BACnet Broadcast Management Device (BBMD)"
-    9998  = "Tridium Niagara Fox Protocol"
-    1911  = "Tridium Niagara/JACE Web Fox"
-    4911  = "Tridium Niagara Fox (secure)"
-}
-
-$RemoteAccessPorts = @{
-    3389 = "RDP (Remote Desktop) - BAS workstation access"
-    5900 = "VNC - HVAC controller remote access"
-    5901 = "VNC Alternate"
-    22   = "SSH - Building controller management"
-    80   = "HTTP (Web BMS/BAS Dashboard) - CVE-2026-3611 exposure candidate (Honeywell IQ4x)"
-    443  = "HTTPS (Web BMS/BAS Dashboard)"
-    8080 = "HTTP Alternate (Web BMS Dashboard)"
-    8443 = "HTTPS Alternate (Web BMS Dashboard)"
-}
-
-$ThreatContext = @{
-    "BACnet/IP"  = "No native authentication/encryption - CVE-2026-24060 allows unauthenticated data exposure and manipulation"
-    "BACnet/SC"  = "Encrypted variant, but router chain injection bypass documented in 2026 fuzzing research (BACS-FUZZ)"
-    "LonWorks"   = "Legacy building protocol, minimal to no security controls"
-    "Tridium"    = "Niagara Framework - historical RCE vulnerabilities; verify patch level against 2026 advisories"
-    "RDP"        = "Common BAS workstation attack vector - same pattern used in 2026 critical infrastructure breaches"
-    "VNC"        = "Unencrypted remote access to HVAC/BMS controllers"
-    "SSH"        = "Building controller management access - verify key-based auth only"
-    "Web"        = "Internet-exposed building management dashboard - check for default/no-auth configurations"
-    "Honeywell"  = "CVE-2026-3611 (CVSS 10.0): IQ4x ships with web HMI authentication DISABLED by default. Full remote takeover possible. Common in data centers and healthcare facilities."
-    "Johnson"    = "ICSA-26-204-01: C-CURE 9000 / Victor application server RCE via network access, patch to v3.0+"
-    "Siemens"    = "Desigo CC / SENTRON Powermanager: least-privilege violation vulnerability enables privilege escalation (versions 5-8 affected)"
-}
-
-$VendorAlerts = @(
-    [PSCustomObject]@{ Vendor = "Honeywell"; Port = 5489; CVE = "CVE-2026-3611"; CVSS = "10.0 CRITICAL"
-        Description = "IQ4x BMS Controller ships with web HMI authentication disabled by factory default"
-        Action = "IMMEDIATELY enable authentication; verify not internet-facing; check for unauthorized admin accounts" },
-    [PSCustomObject]@{ Vendor = "Johnson Controls"; Port = 5010; CVE = "ICSA-26-204-01"; CVSS = "High"
-        Description = "C-CURE 9000 / Victor application server remote code execution via network access"
-        Action = "Patch to latest version immediately; restrict network access to management VLAN only" },
-    [PSCustomObject]@{ Vendor = "Siemens"; Port = 2404; CVE = "CISA 2025-08-19 Advisory"; CVSS = "Medium-High"
-        Description = "Desigo CC / SENTRON Powermanager least-privilege violation enables privilege escalation"
-        Action = "Apply Siemens patch; review user privilege assignments" },
-    [PSCustomObject]@{ Vendor = "Tridium/Honeywell"; Port = 1911; CVE = "Niagara Framework"; CVSS = "Variable"
-        Description = "Tridium Niagara Fox protocol - historically targeted framework used across multiple BMS vendors"
-        Action = "Verify Niagara version is current; disable unencrypted Fox protocol (1911) in favor of secure Fox (4911)" }
-)
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+Initialize-BasConfig -Config (Import-SectorConfig -Sector 'bas')
 
 function Show-Intro {
     Clear-Host
@@ -271,6 +215,8 @@ function Generate-Report {
     $content | Out-File -FilePath $reportFile -Encoding UTF8
     return $reportFile
 }
+
+if ($BAS_TEST_MODE -or $global:BAS_TEST_MODE) { return }
 
 Show-Intro
 Ask-Subnets

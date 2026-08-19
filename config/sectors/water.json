@@ -1,0 +1,110 @@
+{
+  "sector": "water",
+  "metadata": {
+    "name": "WUP WUP",
+    "full_name": "Water Utility Protector",
+    "version": "3.4.0",
+    "tagline": "WUP WUP - Emergency Response for Water Security",
+    "reference": "CISA Alert AA26-097A (2026-07-30)"
+  },
+  "remote_access_ports": [
+    {
+      "port": 3389,
+      "label": "RDP (Remote Desktop) - #1 attack vector",
+      "severity": "CRITICAL",
+      "context_key": "RDP"
+    },
+    {
+      "port": 5900,
+      "label": "VNC (Virtual Network Computing) - Active exploitation",
+      "severity": "CRITICAL",
+      "context_key": "VNC"
+    },
+    {
+      "port": 5901,
+      "label": "VNC Alternate",
+      "severity": "CRITICAL",
+      "context_key": "VNC"
+    },
+    {
+      "port": 22,
+      "label": "SSH (Secure Shell) - CISA-flagged in water attacks",
+      "severity": "CRITICAL",
+      "context_key": "SSH"
+    },
+    {
+      "port": 80,
+      "label": "HTTP (Web HMI)",
+      "severity": "HIGH",
+      "context_key": "HTTP"
+    },
+    {
+      "port": 443,
+      "label": "HTTPS (Web HMI)",
+      "severity": "HIGH",
+      "context_key": "HTTPS"
+    },
+    {
+      "port": 8080,
+      "label": "HTTP Alternate (Web HMI)",
+      "severity": "HIGH",
+      "context_key": "HTTP"
+    },
+    {
+      "port": 8443,
+      "label": "HTTPS Alternate (Web HMI)",
+      "severity": "HIGH",
+      "context_key": "HTTPS"
+    }
+  ],
+  "ot_protocol_ports": [
+    {
+      "port": 44818,
+      "label": "EtherNet/IP (CIP) - Rockwell/Allen-Bradley [TARGETED]",
+      "context_key": "EtherNet/IP"
+    },
+    {
+      "port": 2222,
+      "label": "EtherNet/IP Alternate - CISA-flagged",
+      "context_key": "EtherNet/IP"
+    },
+    {
+      "port": 502,
+      "label": "Modbus TCP - Unauthenticated protocol",
+      "context_key": "Modbus"
+    },
+    {
+      "port": 102,
+      "label": "S7 Comm (Siemens SIMATIC)",
+      "context_key": "S7"
+    },
+    {
+      "port": 20000,
+      "label": "DNP3 - Water sector common",
+      "context_key": "DNP3"
+    },
+    {
+      "port": 47808,
+      "label": "BACnet/IP - Building/HVAC integration",
+      "context_key": "BACnet/IP"
+    },
+    {
+      "port": 20256,
+      "label": "UniLogic (Unitronics Vision PLC)",
+      "context_key": "UniLogic"
+    }
+  ],
+  "threat_context": {
+    "RDP": "PRIMARY ATTACK VECTOR - 70% of water sector breaches (CISA 2026)",
+    "VNC": "Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)",
+    "SSH": "CISA-flagged in July 2026 water sector attacks",
+    "EtherNet/IP": "Rockwell MicroLogix 1400 targeted (4,148 exposed globally)",
+    "Modbus": "Unauthenticated - easily manipulated (CVSS 9.3)",
+    "S7": "Siemens SIMATIC S7-1200 (4,117 exposed globally)",
+    "HTTP": "Internet-exposed Web HMI per CISA/EPA joint advisory",
+    "HTTPS": "Internet-exposed Web HMI per CISA/EPA joint advisory",
+    "DNP3": "Water sector SCADA protocol - no encryption",
+    "UniLogic": "Unitronics Vision PLC - default password '1111'",
+    "BACnet/IP": "Building/HVAC integration protocol - no authentication"
+  }
+}
