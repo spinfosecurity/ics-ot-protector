@@ -46,51 +46,11 @@
 #>
 
 # ============================================================================
-# CONFIGURATION
+# CONFIGURATION (loaded from config/sectors/water.yaml)
 # ============================================================================
 
-$ScriptInfo = @{
-    Name = "WUP WUP"
-    FullName = "Water Utility Protector"
-    Version = "3.4.0"
-    Tagline = "WUP WUP - Emergency Response for Water Security"
-    Reference = "CISA Alert AA26-097A (2026-07-30)"
-}
-
-$CriticalOTPorts = @{
-    44818 = "EtherNet/IP (CIP) - Rockwell/Allen-Bradley [TARGETED]"
-    2222 = "EtherNet/IP Alternate - CISA-flagged"
-    502 = "Modbus TCP - Unauthenticated protocol"
-    102 = "S7 Comm (Siemens SIMATIC)"
-    20000 = "DNP3 - Water sector common"
-    47808 = "BACnet/IP - Building/HVAC integration"
-    20256 = "UniLogic (Unitronics Vision PLC)"
-}
-
-$RemoteAccessPorts = @{
-    3389 = "RDP (Remote Desktop) - #1 attack vector"
-    5900 = "VNC (Virtual Network Computing) - Active exploitation"
-    5901 = "VNC Alternate"
-    22 = "SSH (Secure Shell) - CISA-flagged in water attacks"
-    80 = "HTTP (Web HMI)"
-    443 = "HTTPS (Web HMI)"
-    8080 = "HTTP Alternate (Web HMI)"
-    8443 = "HTTPS Alternate (Web HMI)"
-}
-
-$ThreatContext = @{
-    "RDP"         = "PRIMARY ATTACK VECTOR - 70% of water sector breaches (CISA 2026)"
-    "VNC"         = "Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)"
-    "SSH"         = "CISA-flagged in July 2026 water sector attacks"
-    "EtherNet/IP" = "Rockwell MicroLogix 1400 targeted (4,148 exposed globally)"
-    "Modbus"      = "Unauthenticated - easily manipulated (CVSS 9.3)"
-    "S7"          = "Siemens SIMATIC S7-1200 (4,117 exposed globally)"
-    "HTTP"        = "Internet-exposed Web HMI per CISA/EPA joint advisory"
-    "HTTPS"       = "Internet-exposed Web HMI per CISA/EPA joint advisory"
-    "DNP3"        = "Water sector SCADA protocol - no encryption"
-    "UniLogic"    = "Unitronics Vision PLC - default password '1111'"
-    "BACnet/IP"   = "Building/HVAC integration protocol - no authentication"
-}
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+Initialize-WaterConfig -Config (Import-SectorConfig -Sector 'water')
 
 # ============================================================================
 # HELPER FUNCTIONS

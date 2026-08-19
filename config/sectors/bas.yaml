@@ -1,0 +1,110 @@
+sector: bas
+metadata:
+  name: BAS Guardian
+  version: "2.0.0"
+  tagline: BAS Guardian - Protecting Building Automation from Cyber Threats
+  reference: CISA ICSA-26-069-03 | ICSA-26-204-01 | CVE-2026-3611 | CVE-2026-24060
+
+bas_protocol_ports:
+  - port: 47808
+    label: "BACnet/IP - Unauthenticated protocol (CVE-2026-24060 exposure candidate)"
+    context_key: BACnet/IP
+  - port: 47809
+    label: BACnet/IP Alternate
+    context_key: BACnet/IP
+  - port: 4800
+    label: "BACnet/SC (Secure Connect) - WebSocket"
+    context_key: BACnet/SC
+  - port: 1628
+    label: LonWorks/LonTalk - Building automation
+    context_key: LonWorks
+  - port: 1629
+    label: LonWorks Alternate
+    context_key: LonWorks
+  - port: 47800
+    label: BACnet Broadcast Management Device (BBMD)
+    context_key: BACnet/IP
+  - port: 9998
+    label: Tridium Niagara Fox Protocol
+    context_key: Tridium
+  - port: 1911
+    label: Tridium Niagara/JACE Web Fox
+    context_key: Tridium
+  - port: 4911
+    label: Tridium Niagara Fox (secure)
+    context_key: Tridium
+
+remote_access_ports:
+  - port: 3389
+    label: "RDP (Remote Desktop) - BAS workstation access"
+    severity: CRITICAL
+    context_key: RDP
+  - port: 5900
+    label: VNC - HVAC controller remote access
+    severity: CRITICAL
+    context_key: VNC
+  - port: 5901
+    label: VNC Alternate
+    severity: CRITICAL
+    context_key: VNC
+  - port: 22
+    label: SSH - Building controller management
+    severity: CRITICAL
+    context_key: SSH
+  - port: 80
+    label: "HTTP (Web BMS/BAS Dashboard) - CVE-2026-3611 exposure candidate (Honeywell IQ4x)"
+    severity: HIGH
+    context_key: HTTP
+  - port: 443
+    label: HTTPS (Web BMS/BAS Dashboard)
+    severity: HIGH
+    context_key: HTTPS
+  - port: 8080
+    label: HTTP Alternate (Web BMS Dashboard)
+    severity: HIGH
+    context_key: HTTP
+  - port: 8443
+    label: HTTPS Alternate (Web BMS Dashboard)
+    severity: HIGH
+    context_key: HTTPS
+
+threat_context:
+  BACnet/IP: "No native authentication/encryption - CVE-2026-24060 allows unauthenticated data exposure and manipulation"
+  BACnet/SC: "Encrypted variant, but router chain injection bypass documented in 2026 fuzzing research (BACS-FUZZ)"
+  LonWorks: "Legacy building protocol, minimal to no security controls"
+  Tridium: "Niagara Framework - historical RCE vulnerabilities; verify patch level against 2026 advisories"
+  RDP: "Common BAS workstation attack vector - same pattern used in 2026 critical infrastructure breaches"
+  VNC: "Unencrypted remote access to HVAC/BMS controllers"
+  SSH: "Building controller management access - verify key-based auth only"
+  Web: "Internet-exposed building management dashboard - check for default/no-auth configurations"
+  HTTP: "Internet-exposed building management dashboard - check for default/no-auth configurations"
+  HTTPS: "Internet-exposed building management dashboard - check for default/no-auth configurations"
+  Honeywell: "CVE-2026-3611 (CVSS 10.0): IQ4x ships with web HMI authentication DISABLED by default. Full remote takeover possible. Common in data centers and healthcare facilities."
+  Johnson: "ICSA-26-204-01: C-CURE 9000 / Victor application server RCE via network access, patch to v3.0+"
+  Siemens: "Desigo CC / SENTRON Powermanager: least-privilege violation vulnerability enables privilege escalation (versions 5-8 affected)"
+
+vendor_alerts:
+  - vendor: Honeywell
+    port: 5489
+    cve: CVE-2026-3611
+    cvss: "10.0 CRITICAL"
+    description: "IQ4x BMS Controller ships with web HMI authentication disabled by factory default"
+    action: "IMMEDIATELY enable authentication; verify not internet-facing; check for unauthorized admin accounts"
+  - vendor: Johnson Controls
+    port: 5010
+    cve: ICSA-26-204-01
+    cvss: High
+    description: "C-CURE 9000 / Victor application server remote code execution via network access"
+    action: "Patch to latest version immediately; restrict network access to management VLAN only"
+  - vendor: Siemens
+    port: 2404
+    cve: CISA 2025-08-19 Advisory
+    cvss: Medium-High
+    description: "Desigo CC / SENTRON Powermanager least-privilege violation enables privilege escalation"
+    action: "Apply Siemens patch; review user privilege assignments"
+  - vendor: Tridium/Honeywell
+    port: 1911
+    cve: Niagara Framework
+    cvss: Variable
+    description: "Tridium Niagara Fox protocol - historically targeted framework used across multiple BMS vendors"
+    action: "Verify Niagara version is current; disable unencrypted Fox protocol (1911) in favor of secure Fox (4911)"

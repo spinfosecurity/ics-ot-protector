@@ -5,6 +5,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 ## [Unreleased]
 
 ### Added
+- **Shared sector YAML/JSON configuration** under `config/sectors/` — single source of truth for port tables, threat context, CVE checks, and vendor alerts
+- **Config compile + validation** — `scripts/config/compile_configs.py`, `tests/shared/bash/validate_configs.sh`
+- **Shared config loaders** — `scanners/_shared/Import-SectorConfig.ps1` and `load_sector_config.sh`
+- **Behavioral tests for EGP, BAS, and ROP** — Pester suites plus shared Bash config behavioral tests
+- **Config schema tests** — `tests/shared/PowerShell/Config.Tests.ps1`
+
+### Changed
+- All eight sector scanners now load port/CVE definitions from compiled JSON instead of hardcoded in-script tables
+- EGP, BAS, and ROP scripts support test-mode guards (`$EGP_TEST_MODE`, `$BAS_TEST_MODE`, `$ROP_TEST_MODE`) for dot-source behavioral testing
+
+## [4.0.0] - 2026-08-19
 - **Unified ICS OT Protector monorepo** — consolidated four sector-specific scanner projects into one repository:
   - `scanners/water/` — Water Utility Protector (WUP WUP) v3.4.0
   - `scanners/energy-grid/` — Energy Grid Protector (EGP) v1.0.0

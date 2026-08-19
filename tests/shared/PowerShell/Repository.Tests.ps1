@@ -51,6 +51,8 @@ Describe 'ICS OT Protector monorepo' {
         foreach ($sector in $script:Sectors) {
             Test-Path (Join-Path $script:Root 'docs' 'sectors' $sector 'threat-model.md') | Should -BeTrue -Because "$sector threat-model.md must exist"
             Test-Path (Join-Path $script:Root 'docs' 'sectors' $sector 'sample-report.md') | Should -BeTrue -Because "$sector sample-report.md must exist"
+            Test-Path (Join-Path $script:Root 'config' 'sectors' "$sector.yaml") | Should -BeTrue -Because "$sector.yaml must exist"
+            Test-Path (Join-Path $script:Root 'config' 'sectors' "$sector.json") | Should -BeTrue -Because "$sector.json must exist"
         }
     }
 

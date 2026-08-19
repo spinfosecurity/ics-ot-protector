@@ -58,6 +58,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+Initialize-RailConfig -Config (Import-SectorConfig -Sector 'rail')
+
 # ---------------------------------------------------------------------------
 # Thread-safe findings collection
 # ---------------------------------------------------------------------------
@@ -118,35 +121,7 @@ function ConvertTo-IpRange {
 # ---------------------------------------------------------------------------
 function Get-PortCatalog {
     param([switch]$FastEotHot)
-
-    $catalog = @(
-        # EOT/HOT — CVE-2025-1727
-        [pscustomobject]@{ Port=4510;  Name='EOT/HOT Remote Linking';        Severity='CRITICAL'; Category='EotHot';      Description='Potential EOT/HOT remote linking service detected (CVE-2025-1727 exposure candidate) — Wabtec TrainLink NG/NG3/NG4/NG5, Siemens Trainguard, DPS Electronics' },
-        [pscustomobject]@{ Port=4511;  Name='EOT/HOT Remote Linking (alt)';  Severity='CRITICAL'; Category='EotHot';      Description='Potential EOT/HOT remote linking backup channel (CVE-2025-1727 exposure candidate)' },
-        # RailSafe legacy SCADA API
-        [pscustomobject]@{ Port=28784; Name='RailSafe Control Interface';    Severity='HIGH';     Category='RailSafe';    Description='RailSafe Control Interface fingerprint matched legacy API version family (v1.0/1.1/2.0 — MitM/replay risk, 13 years unpatched)' },
-        # Remote access
-        [pscustomobject]@{ Port=21;    Name='FTP';                           Severity='HIGH';     Category='RemoteAccess';Description='FTP exposed on OT network — plaintext credential risk' },
-        [pscustomobject]@{ Port=22;    Name='SSH';                           Severity='MEDIUM';   Category='RemoteAccess';Description='SSH reachable from scan host — review access policy and key management' },
-        [pscustomobject]@{ Port=23;    Name='Telnet';                        Severity='HIGH';     Category='RemoteAccess';Description='Telnet exposed on OT network — plaintext credential risk' },
-        [pscustomobject]@{ Port=80;    Name='HTTP';                          Severity='MEDIUM';   Category='RemoteAccess';Description='HTTP management interface reachable — review access and authentication' },
-        [pscustomobject]@{ Port=443;   Name='HTTPS';                         Severity='MEDIUM';   Category='RemoteAccess';Description='HTTPS management interface reachable — validate certificate and access controls' },
-        [pscustomobject]@{ Port=3389;  Name='RDP';                           Severity='HIGH';     Category='RemoteAccess';Description='RDP exposed on OT subnet — restrict immediately per CISA AA26-097A' },
-        [pscustomobject]@{ Port=5900;  Name='VNC';                           Severity='HIGH';     Category='RemoteAccess';Description='VNC exposed on OT subnet — restrict immediately per FBI PSA 2026-08-01' },
-        [pscustomobject]@{ Port=5901;  Name='VNC (alt display)';             Severity='HIGH';     Category='RemoteAccess';Description='Alternate VNC display port exposed on OT subnet — review per FBI PSA 2026-08-01' },
-        # ICS protocols
-        [pscustomobject]@{ Port=102;   Name='S7 / IEC 60870';               Severity='HIGH';     Category='ICS';         Description='S7/IEC 60870 service reachable — validate OT network segmentation' },
-        [pscustomobject]@{ Port=502;   Name='Modbus';                        Severity='HIGH';     Category='ICS';         Description='Modbus service reachable from scan host — validate segmentation' },
-        [pscustomobject]@{ Port=2222;  Name='EtherNet/IP (implicit)';        Severity='HIGH';     Category='ICS';         Description='EtherNet/IP implicit messaging port reachable — validate segmentation' },
-        [pscustomobject]@{ Port=2404;  Name='IEC 60870-5-104';               Severity='HIGH';     Category='ICS';         Description='IEC 60870-5-104 reachable from scan host — validate segmentation' },
-        [pscustomobject]@{ Port=20000; Name='DNP3';                          Severity='HIGH';     Category='ICS';         Description='DNP3 service reachable from scan host — validate segmentation' },
-        [pscustomobject]@{ Port=44818; Name='EtherNet/IP (explicit)';        Severity='HIGH';     Category='ICS';         Description='EtherNet/IP explicit messaging port reachable — validate segmentation' }
-    )
-
-    if ($FastEotHot) {
-        return , ($catalog | Where-Object { $_.Category -eq 'EotHot' })
-    }
-    return , $catalog
+    Get-RailPortCatalog -FastEotHot:$FastEotHot
 }
 
 # ---------------------------------------------------------------------------
@@ -165,8 +140,9 @@ function Test-TcpPort {
 }
 
 # ---------------------------------------------------------------------------
-# Main
+# Main (skipped when $ROP_TEST_MODE is set before dot-sourcing)
 # ---------------------------------------------------------------------------
+if ($ROP_TEST_MODE -or $global:ROP_TEST_MODE) { return }
 
 # Validate and resolve output directory
 if (-not (Test-Path -LiteralPath $OutputDir)) {

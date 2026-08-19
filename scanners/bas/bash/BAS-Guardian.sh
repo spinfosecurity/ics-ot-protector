@@ -1,59 +1,13 @@
 #!/bin/bash
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../_shared/load_sector_config.sh
+source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+initialize_bas_config
+
 # =============================================================================
-# BAS Guardian v2.0 - Building Automation System Protector (Bash Edition)
-# Cybersecurity Scanner for BACnet/HVAC/Building Management Systems
-# Enhanced with 2026 CISA ICS Advisories & Vendor-Specific CVE Intelligence
+# BAS Guardian - Building Automation System Protector (Bash)
 # =============================================================================
-
-SCRIPT_VERSION="2.0.0"
-SCRIPT_TAGLINE="BAS Guardian - Protecting Building Automation from Cyber Threats"
-REFERENCE="CISA ICSA-26-069-03 | ICSA-26-204-01 | CVE-2026-3611 | CVE-2026-24060"
-
-declare -A CRITICAL_BAS_PORTS=(
-    [47808]="BACnet/IP - Unauthenticated protocol (CVE-2026-24060 exposure candidate)"
-    [47809]="BACnet/IP Alternate"
-    [4800]="BACnet/SC (Secure Connect) - WebSocket"
-    [1628]="LonWorks/LonTalk - Building automation"
-    [1629]="LonWorks Alternate"
-    [47800]="BACnet Broadcast Management Device (BBMD)"
-    [9998]="Tridium Niagara Fox Protocol"
-    [1911]="Tridium Niagara/JACE Web Fox"
-    [4911]="Tridium Niagara Fox (secure)"
-)
-
-declare -A REMOTE_ACCESS_PORTS=(
-    [3389]="RDP (Remote Desktop) - BAS workstation access"
-    [5900]="VNC - HVAC controller remote access"
-    [5901]="VNC Alternate"
-    [22]="SSH - Building controller management"
-    [80]="HTTP (Web BMS/BAS Dashboard) - [Honeywell IQ4x CVE-2026-3611 RISK]"
-    [443]="HTTPS (Web BMS/BAS Dashboard)"
-    [8080]="HTTP Alternate (Web BMS Dashboard)"
-    [8443]="HTTPS Alternate (Web BMS Dashboard)"
-)
-
-declare -A THREAT_CONTEXT=(
-    ["BACnet/IP"]="No native authentication/encryption - CVE-2026-24060 allows unauthenticated data exposure and manipulation"
-    ["BACnet/SC"]="Encrypted variant, but router chain injection bypass documented in 2026 fuzzing research (BACS-FUZZ)"
-    ["LonWorks"]="Legacy building protocol, minimal to no security controls"
-    ["Tridium"]="Niagara Framework - historical RCE vulnerabilities; verify patch level against 2026 advisories"
-    ["RDP"]="Common BAS workstation attack vector - same pattern used in 2026 critical infrastructure breaches"
-    ["VNC"]="Unencrypted remote access to HVAC/BMS controllers"
-    ["SSH"]="Building controller management access - verify key-based auth only"
-    ["HTTP"]="Internet-exposed building management dashboard - check for default/no-auth configurations"
-    ["Honeywell"]="CVE-2026-3611 (CVSS 10.0): IQ4x ships with web HMI authentication DISABLED by default. Full remote takeover possible."
-    ["Johnson"]="ICSA-26-204-01: C-CURE 9000 / Victor application server RCE via network access, patch to v3.0+"
-    ["Siemens"]="Desigo CC / SENTRON Powermanager: least-privilege violation enables privilege escalation (versions 5-8 affected)"
-)
-
-# Vendor-specific critical alert ports (candidate exposure by port reachability)
-declare -A VENDOR_ALERT_PORTS=(
-    [5489]="Honeywell|CVE-2026-3611|10.0 CRITICAL|IQ4x BMS Controller ships with web HMI authentication disabled by factory default|IMMEDIATELY enable authentication; verify not internet-facing; check for unauthorized admin accounts"
-    [5010]="Johnson Controls|ICSA-26-204-01|High|C-CURE 9000 / Victor application server remote code execution via network access|Patch to latest version immediately; restrict network access to management VLAN only"
-    [2404]="Siemens|CISA 2025-08-19 Advisory|Medium-High|Desigo CC / SENTRON Powermanager least-privilege violation enables privilege escalation|Apply Siemens patch; review user privilege assignments"
-    [1911]="Tridium/Honeywell|Niagara Framework|Variable|Tridium Niagara Fox protocol - historically targeted framework used across multiple BMS vendors|Verify Niagara version is current; disable unencrypted Fox protocol in favor of secure Fox (4911)"
-)
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -374,4 +328,6 @@ main() {
     echo ""
 }
 
-main
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

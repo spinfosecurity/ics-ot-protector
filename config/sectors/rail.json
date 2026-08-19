@@ -1,0 +1,130 @@
+{
+  "sector": "rail",
+  "metadata": {
+    "name": "Rail-OT-Protector",
+    "short_name": "ROP",
+    "version": "1.0.0",
+    "reference": "CISA AA26-097A, FBI PSA 2026-08-01"
+  },
+  "port_catalog": [
+    {
+      "port": 4510,
+      "name": "EOT/HOT Remote Linking",
+      "severity": "CRITICAL",
+      "category": "EotHot",
+      "description": "Potential EOT/HOT remote linking service detected (CVE-2025-1727 exposure candidate) — Wabtec TrainLink NG/NG3/NG4/NG5, Siemens Trainguard, DPS Electronics"
+    },
+    {
+      "port": 4511,
+      "name": "EOT/HOT Remote Linking (alt)",
+      "severity": "CRITICAL",
+      "category": "EotHot",
+      "description": "Potential EOT/HOT remote linking backup channel (CVE-2025-1727 exposure candidate)"
+    },
+    {
+      "port": 28784,
+      "name": "RailSafe Control Interface",
+      "severity": "HIGH",
+      "category": "RailSafe",
+      "description": "RailSafe Control Interface fingerprint matched legacy API version family (v1.0/1.1/2.0 — MitM/replay risk, 13 years unpatched)"
+    },
+    {
+      "port": 21,
+      "name": "FTP",
+      "severity": "HIGH",
+      "category": "RemoteAccess",
+      "description": "FTP exposed on OT network — plaintext credential risk"
+    },
+    {
+      "port": 22,
+      "name": "SSH",
+      "severity": "MEDIUM",
+      "category": "RemoteAccess",
+      "description": "SSH reachable from scan host — review access policy and key management"
+    },
+    {
+      "port": 23,
+      "name": "Telnet",
+      "severity": "HIGH",
+      "category": "RemoteAccess",
+      "description": "Telnet exposed on OT network — plaintext credential risk"
+    },
+    {
+      "port": 80,
+      "name": "HTTP",
+      "severity": "MEDIUM",
+      "category": "RemoteAccess",
+      "description": "HTTP management interface reachable — review access and authentication"
+    },
+    {
+      "port": 443,
+      "name": "HTTPS",
+      "severity": "MEDIUM",
+      "category": "RemoteAccess",
+      "description": "HTTPS management interface reachable — validate certificate and access controls"
+    },
+    {
+      "port": 3389,
+      "name": "RDP",
+      "severity": "HIGH",
+      "category": "RemoteAccess",
+      "description": "RDP exposed on OT subnet — restrict immediately per CISA AA26-097A"
+    },
+    {
+      "port": 5900,
+      "name": "VNC",
+      "severity": "HIGH",
+      "category": "RemoteAccess",
+      "description": "VNC exposed on OT subnet — restrict immediately per FBI PSA 2026-08-01"
+    },
+    {
+      "port": 5901,
+      "name": "VNC (alt display)",
+      "severity": "HIGH",
+      "category": "RemoteAccess",
+      "description": "Alternate VNC display port exposed on OT subnet — review per FBI PSA 2026-08-01"
+    },
+    {
+      "port": 102,
+      "name": "S7 / IEC 60870",
+      "severity": "HIGH",
+      "category": "ICS",
+      "description": "S7/IEC 60870 service reachable — validate OT network segmentation"
+    },
+    {
+      "port": 502,
+      "name": "Modbus",
+      "severity": "HIGH",
+      "category": "ICS",
+      "description": "Modbus service reachable from scan host — validate segmentation"
+    },
+    {
+      "port": 2222,
+      "name": "EtherNet/IP (implicit)",
+      "severity": "HIGH",
+      "category": "ICS",
+      "description": "EtherNet/IP implicit messaging port reachable — validate segmentation"
+    },
+    {
+      "port": 2404,
+      "name": "IEC 60870-5-104",
+      "severity": "HIGH",
+      "category": "ICS",
+      "description": "IEC 60870-5-104 reachable from scan host — validate segmentation"
+    },
+    {
+      "port": 20000,
+      "name": "DNP3",
+      "severity": "HIGH",
+      "category": "ICS",
+      "description": "DNP3 service reachable from scan host — validate segmentation"
+    },
+    {
+      "port": 44818,
+      "name": "EtherNet/IP (explicit)",
+      "severity": "HIGH",
+      "category": "ICS",
+      "description": "EtherNet/IP explicit messaging port reachable — validate segmentation"
+    }
+  ]
+}
