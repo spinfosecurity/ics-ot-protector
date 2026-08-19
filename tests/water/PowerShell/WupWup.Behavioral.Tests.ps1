@@ -3,7 +3,8 @@ BeforeAll {
     # the interactive main-execution block. $WUP_TEST_MODE causes the script
     # to return before the try{} session starts.
     $WUP_TEST_MODE = $true
-    . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'scripts' 'powershell' 'WUP-WUP.ps1')
+    $script:Root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+    . (Join-Path $script:Root 'scanners' 'water' 'powershell' 'WUP-WUP.ps1')
 
     # Capture everything loaded by dot-source into $script: scope so it is
     # accessible inside all It blocks (Pester 6 runs It in a child scope).

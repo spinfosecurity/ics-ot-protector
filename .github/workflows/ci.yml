@@ -14,14 +14,26 @@ jobs:
       - name: Lint PowerShell
         shell: pwsh
         run: |
-          Get-ChildItem scripts -Recurse -Filter *.ps1 | ForEach-Object {$t=$null;$e=$null;[void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$t,[ref]$e);if($e.Count){throw "Parse error: $($_.FullName)"};Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error,Warning}
-      - name: Run non-networked PowerShell tests
+          Get-ChildItem scanners -Recurse -Filter *.ps1 | ForEach-Object {
+            $t=$null;$e=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$t,[ref]$e)
+            if($e.Count){throw "Parse error: $($_.FullName)"}
+            Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error,Warning
+          }
+      - name: Run monorepo PowerShell tests
         shell: pwsh
-        run: Invoke-Pester ./tests/PowerShell -CI -Output Detailed
-      - name: Run non-networked Bash tests
+        run: Invoke-Pester (Get-ChildItem -Path ./tests -Recurse -Filter *.Tests.ps1) -CI -Output Detailed
+      - name: Run monorepo Bash tests
         shell: bash
-        run: bash tests/bash/repository_tests.sh
+        run: |
+          bash tests/shared/bash/repository_tests.sh
+          bash tests/water/bash/repository_tests.sh
+          bash tests/water/bash/behavioral_tests.sh
+          bash tests/energy-grid/bash/repository_tests.sh
+          bash tests/bas/bash/repository_tests.sh
+          bash tests/rail/bash/repository_tests.sh
       - name: Confirm project files
         shell: bash
         run: |
           test -f CHANGELOG.md && test -f CODE_OF_CONDUCT.md && test -f docs/safe-operation.md && test -f docs/threat-model.md && test -f docs/sample-report.md
+          test -d scanners/water && test -d scanners/energy-grid && test -d scanners/bas && test -d scanners/rail

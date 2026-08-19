@@ -1,0 +1,5 @@
+reports/
+
+Scan reports are written here by sector scanners that support file output (notably ROP and EGP).
+
+Each scanner may also write to user-specific paths — see the sector README for details.

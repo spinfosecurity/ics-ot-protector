@@ -4,13 +4,29 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+### Added
+- **Unified ICS OT Protector monorepo** — consolidated four sector-specific scanner projects into one repository:
+  - `scanners/water/` — Water Utility Protector (WUP WUP) v3.4.0
+  - `scanners/energy-grid/` — Energy Grid Protector (EGP) v1.0.0
+  - `scanners/bas/` — BAS Guardian v2.0.0
+  - `scanners/rail/` — Rail-OT-Protector (ROP) v1.0.0
+- **Sector-specific documentation** under `docs/sectors/{water,energy-grid,bas,rail}/`
+- **Monorepo test suite** — shared validation plus per-sector repository and behavioral tests
+- **Backward-compatible launchers** for the water scanner at legacy `scripts/` paths
+- **Sector READMEs** with quick-start commands and port coverage tables for each scanner
+
+### Changed
+- Repository restructured from single-scanner layout to multi-sector monorepo
+- CI updated to lint and test all four sector scanners
+- Root README rewritten as unified portfolio documentation
+
 ## [3.4.0] - 2026-08-19
 
 ### Added
 - **Parallel scanning** (PowerShell): per-host scanning now uses a runspace pool (up to 50 concurrent runspaces), dramatically reducing wall-clock time versus the previous sequential loop. Results are collected and displayed as each host completes.
 - **Parallel scanning** (Bash): per-host scanning now dispatches background workers (up to 50 concurrent), with findings written to per-host temp files and collected in IP order after all workers complete.
-- **Behavioral test suite** (Bash): `tests/bash/behavioral_tests.sh` — 62 tests covering `get_threat_context`, port table completeness, service token extraction, CRITICAL classification, report generation (with and without findings), and the `scan_host` worker function.
-- **Behavioral test suite** (PowerShell): `tests/PowerShell/WupWup.Behavioral.Tests.ps1` — Pester tests for `ThreatContext` table, port table keys, `Get-NetworkPrefix`, service token extraction, `Show-ScanHeader`/`Show-ScanComplete` overflow safety, `Generate-Report` content and clean-scan behavior, and `ScriptInfo` metadata.
+- **Behavioral test suite** (Bash): `tests/water/bash/behavioral_tests.sh` — 62 tests covering `get_threat_context`, port table completeness, service token extraction, CRITICAL classification, report generation (with and without findings), and the `scan_host` worker function.
+- **Behavioral test suite** (PowerShell): `tests/water/PowerShell/WupWup.Behavioral.Tests.ps1` — Pester tests for `ThreatContext` table, port table keys, `Get-NetworkPrefix`, service token extraction, `Show-ScanHeader`/`Show-ScanComplete` overflow safety, `Generate-Report` content and clean-scan behavior, and `ScriptInfo` metadata.
 - **Clean-scan report** (both): when a user opts into report export but no findings are detected, a report is now generated anyway (documenting a clean scan result), rather than silently producing no file.
 - **Source guard** (Bash): `WUP-WUP.sh` now uses `[[ "${BASH_SOURCE[0]}" == "${0}" ]]` to skip `main()` when sourced, enabling the behavioral test suite to load functions without triggering interactive execution.
 
@@ -24,7 +40,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 ## [3.3.0] - 2026-08-19
 
 ### Added
-- **Bash implementation** (`scripts/bash/WUP-WUP.sh`): full feature-parity port of the PowerShell scanner for Linux and macOS. Includes identical port coverage, threat context, color-coded output, progress display, and text report export.
+- **Bash implementation** (`scanners/water/bash/WUP-WUP.sh`): full feature-parity port of the PowerShell scanner for Linux and macOS. Includes identical port coverage, threat context, color-coded output, progress display, and text report export.
 
 ### Fixed
 - **ThreatContext lookup for Web HMI ports** (PowerShell): HTTP/HTTPS service tokens were not matching `ThreatContext` keys; lookup now correctly maps `HTTP` and `HTTPS`.
