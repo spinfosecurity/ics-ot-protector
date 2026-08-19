@@ -4,6 +4,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+### Changed
+- WUP and BAS scanners (PowerShell + Bash) now use shared `ScannerHelpers.ps1` / `scanner_helpers.sh` instead of duplicate subnet helpers
+
 ## [4.1.0] - 2026-08-19
 
 ### Added

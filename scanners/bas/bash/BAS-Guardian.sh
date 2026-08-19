@@ -3,6 +3,8 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/scanner_helpers.sh
+source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_bas_config
@@ -32,10 +34,6 @@ test_port() {
     local result=$?
     kill -9 $watcher 2>/dev/null
     return $result
-}
-
-get_network_prefix() {
-    echo "$1" | cut -d'/' -f1 | cut -d'.' -f1-3
 }
 
 show_intro() {
