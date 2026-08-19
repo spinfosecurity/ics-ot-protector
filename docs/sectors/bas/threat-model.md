@@ -1,12 +1,13 @@
-# Threat Model
+# Threat Model — Building Automation (BAS)
 
-## Objective
-Identify reachable remote-access services and building-automation protocol ports from an authorized scan host.
+> Shared baseline: [ICS OT Protector threat model](../../threat-model.md)
 
-## In scope
-TCP reachability checks, exposure-candidate detection, and local JSON/CSV reporting.
+## Sector Objective
 
-## Out of scope
-Exploitation, credential testing, authentication bypass, command execution, proof of device identity or vulnerability, compliance certification, and attribution.
+Identify exposed BACnet/IP, BACnet/SC, LonWorks, and remote-access services on BMS/HVAC workstations, plus vendor-specific BMS platform exposure candidates.
 
-Firewalls, routing, NAT, and host controls can create false positives or negatives. BAS connection attempts can be operationally sensitive. A finding only means the scan host reached the recorded address and port; validate owner, device, controls, and vulnerability status before action.
+## Sector-Specific Considerations
+
+- Vendor alert checks cover Honeywell, Johnson Controls, Siemens, and Tridium port indicators from compiled config.
+- BACnet Who-Is/I-Am broadcast abuse (CVE-2026-24060) is documented in threat context but not actively triggered by this scanner.
+- Interactive wizard with optional JSON export to `./reports/BAS-results-*.json`.

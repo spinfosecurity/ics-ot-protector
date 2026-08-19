@@ -123,7 +123,8 @@ ics-ot-protector/
 │   ├── sectors/            # Sector-specific threat intel & reports
 │   ├── safe-operation.md   # Shared authorized-use procedures
 │   ├── threat-model.md     # Shared scope & limitations
-│   └── sample-report.md    # Shared report format reference
+│   ├── sample-report.md    # JSON export format reference
+│   └── sample-report.json  # Example scan report (schema v1.0)
 ├── tests/
 │   ├── shared/             # Monorepo-wide validation
 │   ├── water/              # WUP WUP behavioral + repo tests
@@ -142,7 +143,7 @@ ics-ot-protector/
 ### Shared
 - [Safe Operation Guide](docs/safe-operation.md)
 - [Threat Model](docs/threat-model.md)
-- [Sample Report Format](docs/sample-report.md)
+- [Sample Report Format](docs/sample-report.md) · [Example JSON](docs/sample-report.json)
 - [Repository Migration Guide](docs/repository-migration.md)
 - [Security Policy](SECURITY.md)
 - [Contributing Guide](CONTRIBUTING.md)

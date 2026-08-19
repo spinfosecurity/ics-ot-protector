@@ -14,6 +14,7 @@ chmod +x scripts/bash/WUP-WUP.sh
 - Bash 4.0+
 - `bc` (arbitrary-precision calculator — for scan time estimates)
 - `timeout` (GNU coreutils — for TCP connection timeout)
+- `jq` (JSON report export)
 - Standard POSIX utilities (`date`, `awk`, `grep`, `seq`)
 
 On **macOS**, `timeout` and a newer Bash may not be installed by default:
@@ -29,7 +30,7 @@ Then invoke with the updated Bash path, or add it to your `PATH`.
 - Identical port coverage, threat intelligence, and severity prioritization to the PowerShell version
 - Color-coded console output (ANSI escape codes)
 - Per-subnet progress bars
-- Optional text report export to `~/WaterUtilitySecurity/Reports/`
+- Optional JSON report export to `~/WaterUtilitySecurity/Reports/` (`WUP-results-*.json`)
 - Parallel per-host scanning (up to 50 concurrent background workers)
 - Clean-scan report generated even when no findings are detected
 - No external dependencies beyond standard shell utilities listed above

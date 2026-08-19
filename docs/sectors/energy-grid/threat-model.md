@@ -1,12 +1,13 @@
-# Threat Model
+# Threat Model — Power Grid & Substation
 
-## Objective
-Identify reachable remote-access services and industrial protocol ports from an authorized scan host.
+> Shared baseline: [ICS OT Protector threat model](../../threat-model.md)
 
-## In scope
-TCP reachability checks, exposure-candidate detection, and local JSON/CSV reporting.
+## Sector Objective
 
-## Out of scope
-Exploitation, credential testing, authentication bypass, command execution, proof of device identity or vulnerability, compliance certification, and attribution.
+Identify named vendor CVE exposure candidates (Hitachi Energy, ABB, B&R), remote-access services, and grid ICS protocols (DNP3, Modbus, IEC 60870-5-104, IEC 61850, EtherNet/IP) on authorized /24 subnets.
 
-Firewalls, routing, NAT, and host controls can create false positives or negatives. OT connection attempts can be operationally sensitive. A finding only means the scan host reached the recorded address and port; validate owner, device, controls, and vulnerability status before action.
+## Sector-Specific Considerations
+
+- CVE-only fast-scan mode checks configured vendor CVE port tables without full ICS/remote-access sweeps.
+- Substation and transmission environments may have strict maintenance windows — coordinate with grid operations before scanning.
+- CLI-driven scanner writes `EGP-results-*.json` to the configured output directory.

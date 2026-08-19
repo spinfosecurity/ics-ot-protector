@@ -1,11 +1,22 @@
-# Sample Report
+# Sample Report — Building Automation (BAS)
 
-Synthetic example only; addresses and findings are fictional.
+Synthetic example only. Full JSON schema reference: [docs/sample-report.json](../../sample-report.json).
 
-```text
-[CRITICAL] 10.0.5.42:47808  BACnet/IP exposure candidate
-[HIGH] 10.0.5.55:1911  Niagara Fox reachable
-[HIGH] 10.0.5.61:3389  RDP reachable on BAS scope
+Report prefix: `BAS-results-*.json`  
+Default location: `./reports/`
+
+Example finding from a BAS scan:
+
+```json
+{
+  "Host": "172.16.5.42",
+  "Port": 47808,
+  "Service": "BACnet/IP (UDP/TCP)",
+  "Severity": "HIGH",
+  "Category": "BAS Exposure",
+  "Description": "BACnet/IP exposed — unauthenticated device discovery risk",
+  "Remediation": "Remove from internet; segment from IT network; patch bacnet-stack"
+}
 ```
 
-Triage: confirm scope/owner; validate with facilities and engineering; assess segmentation and remote access; create a ticket with evidence, owner, and due date; rescan only with authorization.
+Triage: confirm BMS owner; check for unauthorized Who-Is/I-Am traffic; validate with facilities engineering; rescan only with authorization.

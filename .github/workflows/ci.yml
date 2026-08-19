@@ -43,5 +43,5 @@ jobs:
       - name: Confirm project files
         shell: bash
         run: |
-          test -f CHANGELOG.md && test -f CODE_OF_CONDUCT.md && test -f docs/safe-operation.md && test -f docs/threat-model.md && test -f docs/sample-report.md
+          test -f CHANGELOG.md && test -f CODE_OF_CONDUCT.md && test -f docs/safe-operation.md && test -f docs/threat-model.md && test -f docs/sample-report.md && test -f docs/sample-report.json
           test -d scanners/water && test -d scanners/energy-grid && test -d scanners/bas && test -d scanners/rail

@@ -1,11 +1,22 @@
-# Sample Report
+# Sample Report — Power Grid & Substation
 
-Synthetic example only; addresses and findings are fictional.
+Synthetic example only. Full JSON schema reference: [docs/sample-report.json](../../sample-report.json).
 
-```text
-[CRITICAL] 10.20.5.33:20000  DNP3 exposure candidate
-[HIGH] 10.20.5.41:102  IEC 61850 MMS reachable
-[HIGH] 10.20.5.61:3389  RDP reachable
+Report prefix: `EGP-results-*.json`  
+Default location: `./reports/`
+
+Example finding from an energy-grid scan:
+
+```json
+{
+  "Host": "10.10.20.15",
+  "Port": 443,
+  "Service": "CVE-2026-42945",
+  "Severity": "CRITICAL",
+  "Category": "CVE",
+  "Description": "Hitachi Energy web management interface exposure candidate",
+  "Remediation": "Apply vendor patch; restrict management VLAN access"
+}
 ```
 
-Triage: confirm scope/owner; validate with engineering; assess segmentation and remote access; create a ticket with evidence, owner, and due date; rescan only with authorization.
+Triage: confirm asset owner and vendor; cross-reference CISA ICS advisories; validate before treating as exploitable; rescan only with authorization.

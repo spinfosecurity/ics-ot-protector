@@ -1,28 +1,22 @@
-# Sample Report
+# Sample Report — Rail & Transit
 
-This synthetic example illustrates the reporting workflow. The addresses, timestamps, and findings below are fictional and must not be treated as live intelligence.
+Synthetic example only. Full JSON schema reference: [docs/sample-report.json](../../sample-report.json).
 
-```text
-[CRITICAL] 10.10.20.14:4510  Potential EOT/HOT remote-linking service exposure candidate
-[HIGH]     10.10.20.21:5900  VNC reachable from the authorized scan host
-[HIGH]     10.10.20.44:2404  IEC 60870-5-104 reachable from the authorized scan host
-[MEDIUM]   10.10.20.88:22    SSH reachable; review access policy
+Report prefix: `ROP-results-*.json`  
+Default location: `./reports/`
+
+Example finding from a rail scan:
+
+```json
+{
+  "Host": "10.10.30.12",
+  "Port": 4510,
+  "Service": "EOT Remote Link",
+  "Severity": "CRITICAL",
+  "Category": "EotHot",
+  "Description": "CVE-2025-1727 EOT/HOT weak authentication indicator",
+  "Remediation": ""
+}
 ```
 
-## Triage Workflow
-
-1. Confirm the target is in scope and identify its owner.
-2. Validate the service with the responsible engineering and security teams.
-3. Assess segmentation, remote-access controls, monitoring, and compensating safeguards.
-4. Create a remediation ticket with the sanitized evidence and an agreed owner/date.
-5. Rescan only after authorization to confirm remediation.
-
-## Example Ticket Fields
-
-| Field | Example |
-|---|---|
-| Asset | Transit operations jump host |
-| Evidence | Reachable TCP/5900 from approved scanner |
-| Severity | High |
-| Recommended action | Restrict VNC to managed access path; require approved remote-access controls |
-| Validation | Engineering confirms service owner and remediation window |
+Triage: confirm signaling/SCADA owner; reference CISA AA26-097A and FBI PSA 2026-08-01; validate EOT/HOT configuration; rescan only with authorization.

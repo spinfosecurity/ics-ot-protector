@@ -1,12 +1,13 @@
-# Threat Model
+# Threat Model — Water & Wastewater
 
-## Objective
-Identify reachable remote-access services and industrial protocol ports from an authorized scan host.
+> Shared baseline: [ICS OT Protector threat model](../../threat-model.md)
 
-## In scope
-TCP reachability checks, exposure-candidate detection, and local JSON/CSV reporting.
+## Sector Objective
 
-## Out of scope
-Exploitation, credential testing, authentication bypass, command execution, proof of device identity or vulnerability, compliance certification, and attribution.
+Identify exposed remote access (RDP, VNC, SSH) and water-sector OT protocols (Modbus, EtherNet/IP, S7, DNP3) on authorized /24 subnets.
 
-Firewalls, routing, NAT, and host controls can create false positives or negatives. OT connection attempts can be operationally sensitive. A finding only means the scan host reached the recorded address and port; validate owner, device, controls, and vulnerability status before action.
+## Sector-Specific Considerations
+
+- PLCs and HMIs at lift stations, treatment plants, and remote sites are primary targets per CISA AA26-097A.
+- Cellular modem and out-of-band management paths are a common blind spot — this scanner checks TCP reachability only.
+- Interactive wizard flow supports multi-subnet scans with optional JSON export to `~/WaterUtilitySecurity/Reports/`.
