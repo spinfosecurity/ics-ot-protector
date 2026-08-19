@@ -4,8 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-08-19
+
+### Added
+- **Shared Bash TCP probe** — `test_tcp_port` in `scanner_helpers.sh`, used by all Bash scanners
+
 ### Changed
-- WUP and BAS scanners (PowerShell + Bash) now use shared `ScannerHelpers.ps1` / `scanner_helpers.sh` instead of duplicate subnet helpers
+- EGP Bash JSON metadata now matches PowerShell (scan mode, target, timeout, reference)
+- WUP/BAS subnet helpers deduplicated to shared modules (from PR #7)
 
 ## [4.1.0] - 2026-08-19
 

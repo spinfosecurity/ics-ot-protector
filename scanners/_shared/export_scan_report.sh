@@ -20,11 +20,12 @@ export_scan_report_init() {
   SCAN_REPORT_JSON_TMP="$(mktemp)"
   SCAN_REPORT_JSON_PATH="${output_dir}/${prefix}-${timestamp}.json"
   SCAN_REPORT_LOCK_DIR="$(mktemp -d)"
+  SCAN_REPORT_EXTRA_META="${5:-}"
 
   echo '[]' > "$SCAN_REPORT_JSON_TMP"
   export SCAN_REPORT_OUTPUT_DIR SCAN_REPORT_PREFIX SCAN_REPORT_TIMESTAMP
   export SCAN_REPORT_SECTOR SCAN_REPORT_SCANNER SCAN_REPORT_JSON_TMP
-  export SCAN_REPORT_JSON_PATH SCAN_REPORT_LOCK_DIR
+  export SCAN_REPORT_JSON_PATH SCAN_REPORT_LOCK_DIR SCAN_REPORT_EXTRA_META
 }
 
 export_scan_report_set_metadata() {
@@ -71,6 +72,9 @@ export_scan_report_finalize() {
       --arg sector "${SCAN_REPORT_SECTOR:-unknown}" \
       --arg scanner "${SCAN_REPORT_SCANNER:-unknown}" \
       '{sector:$sector, scanner:$scanner}')
+  fi
+  if [[ -n "${SCAN_REPORT_EXTRA_META:-}" && "${SCAN_REPORT_EXTRA_META}" != "{}" ]]; then
+    metadata=$(jq -n --argjson base "$metadata" --argjson extra "$SCAN_REPORT_EXTRA_META" '$base + $extra')
   fi
 
   local generated_at

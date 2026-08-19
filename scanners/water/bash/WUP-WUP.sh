@@ -76,18 +76,6 @@ get_threat_context() {
 }
 
 # ---------------------------------------------------------------------------- #
-# TCP port test (cross-platform: /dev/tcp or nc fallback)
-# ---------------------------------------------------------------------------- #
-test_port() {
-    local ip="$1" port="$2" timeout_sec="$3"
-    # Try bash built-in /dev/tcp first (no external deps)
-    if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
-        return 0
-    fi
-    return 1
-}
-
-# ---------------------------------------------------------------------------- #
 # UI helpers
 # ---------------------------------------------------------------------------- #
 show_intro() {
@@ -359,7 +347,7 @@ scan_host() {
     local ip="$1" timeout_sec="$2" out_file="$3"
     for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
         IFS='|' read -r port service severity <<< "$entry"
-        if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
+        if test_tcp_port "$ip" "$port" "$timeout_sec"; then
             local token
             token=$(echo "$service" | grep -oE '^[A-Za-z0-9/]+')
             local ctx
@@ -373,7 +361,7 @@ scan_host() {
     done
     for entry in "${OT_PROTOCOL_PORTS[@]}"; do
         IFS='|' read -r port protocol <<< "$entry"
-        if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
+        if test_tcp_port "$ip" "$port" "$timeout_sec"; then
             local token
             token=$(echo "$protocol" | grep -oE '^[A-Za-z0-9/]+')
             local ctx

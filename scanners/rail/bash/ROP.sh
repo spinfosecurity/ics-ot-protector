@@ -12,6 +12,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/scanner_helpers.sh
+source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_rail_config
@@ -135,7 +137,7 @@ write_finding() {
   export_scan_report_append "$host" "$port" "$service" "$severity" "$category" "$description" ""
   printf '[%s] [%s] %s:%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$severity" "$host" "$port" "$description"
 }
-export -f write_finding log export_scan_report_append
+export -f write_finding log export_scan_report_append test_tcp_port
 
 # ---------------------------------------------------------------------------
 # Per-host scan worker
@@ -151,12 +153,12 @@ scan_host() {
     [[ -z "$record" ]] && continue
     local port service severity category description
     IFS='|' read -r port service severity category description <<< "$record"
-    if timeout "$timeout_sec" bash -c "exec 3>/dev/tcp/$host/$port" 2>/dev/null; then
+    if test_tcp_port "$host" "$port" "$timeout_sec"; then
       write_finding "$host" "$port" "$service" "$severity" "$category" "$description"
     fi
   done
 }
-export -f scan_host export_scan_report_append
+export -f scan_host export_scan_report_append test_tcp_port
 export TIMEOUT_MS SCAN_REPORT_JSON_TMP SCAN_REPORT_LOCK_DIR
 
 # ---------------------------------------------------------------------------

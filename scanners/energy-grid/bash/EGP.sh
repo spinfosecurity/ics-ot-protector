@@ -30,6 +30,8 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/scanner_helpers.sh
+source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_energy_grid_config
@@ -116,21 +118,7 @@ validate_inputs() {
 }
 
 # ---------------------------------------------------------------------------
-# TCP port check using /dev/tcp (no nmap/nc dependency)
-# Falls back to nc if /dev/tcp unavailable
-# ---------------------------------------------------------------------------
-check_port() {
-    local ip="$1"
-    local port="$2"
-    if bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null; then
-        exec 3>&- 2>/dev/null || true
-        return 0
-    fi
-    return 1
-}
-
-# ---------------------------------------------------------------------------
-# Thread-safe report writer using flock
+# Write finding to console and JSON export
 # ---------------------------------------------------------------------------
 write_finding() {
     local ip="$1"
@@ -189,13 +177,21 @@ show_banner
 # Prepare output directory
 mkdir -p "$OUTPUT_DIR" || { echo "[-] Cannot create output directory: $OUTPUT_DIR" >&2; exit 1; }
 
-export_scan_report_init "$OUTPUT_DIR" "EGP-results" "energy-grid" "Energy Grid Protector"
-
 if [[ "$CVE_ONLY" == true ]]; then
     MODE_LABEL="CVE-ONLY (fast-scan)"
 else
     MODE_LABEL="FULL SCAN"
 fi
+
+EXTRA_META=$(jq -n \
+  --arg version "1.0.0" \
+  --arg scan_mode "$MODE_LABEL" \
+  --arg target "$SUBNET" \
+  --argjson timeout_ms $((TIMEOUT * 1000)) \
+  --arg reference "CISA Alert AA26-097A | FBI PSA 2026-08-01" \
+  '{version:$version, scan_mode:$scan_mode, target:$target, timeout_ms:$timeout_ms, reference:$reference}')
+
+export_scan_report_init "$OUTPUT_DIR" "EGP-results" "energy-grid" "Energy Grid Protector" "$EXTRA_META"
 
 echo -e "${CYAN}[*] Mode       : ${MODE_LABEL}${NC}"
 echo -e "${CYAN}[*] Target     : ${SUBNET}${NC}"
@@ -225,7 +221,7 @@ for i in $(seq 1 254); do
         IFS='|' read -r ports_str description severity remediation <<< "${cve_checks[$cve_id]}"
         IFS=',' read -r -a port_list <<< "$ports_str"
         for port in "${port_list[@]}"; do
-            if check_port "$IP" "$port" 2>/dev/null; then
+            if test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
                 echo ""
                 write_finding "$IP" "$port" "$cve_id" "$severity" "$description" "$remediation"
                 FINDINGS=$((FINDINGS + 1))
@@ -237,7 +233,7 @@ for i in $(seq 1 254); do
         # --- Remote Access Checks ---
         for port in "${!remote_access_ports[@]}"; do
             IFS='|' read -r name severity description <<< "${remote_access_ports[$port]}"
-            if check_port "$IP" "$port" 2>/dev/null; then
+            if test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
                 echo ""
                 write_finding "$IP" "$port" "REMOTE-ACCESS:${name}" "$severity" "$description" "See docs/CISA-Reference.md"
                 FINDINGS=$((FINDINGS + 1))
@@ -247,7 +243,7 @@ for i in $(seq 1 254); do
         # --- ICS Protocol Checks ---
         for port in "${!ics_ports[@]}"; do
             IFS='|' read -r name severity description <<< "${ics_ports[$port]}"
-            if check_port "$IP" "$port" 2>/dev/null; then
+            if test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
                 echo ""
                 write_finding "$IP" "$port" "ICS-PROTOCOL:${name}" "$severity" "$description" "See docs/Threat-Intelligence.md"
                 FINDINGS=$((FINDINGS + 1))
