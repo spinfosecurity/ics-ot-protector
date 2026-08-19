@@ -4,6 +4,23 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-08-19
+
+### Added
+- **Parallel scanning** (PowerShell): per-host scanning now uses a runspace pool (up to 50 concurrent runspaces), dramatically reducing wall-clock time versus the previous sequential loop. Results are collected and displayed as each host completes.
+- **Parallel scanning** (Bash): per-host scanning now dispatches background workers (up to 50 concurrent), with findings written to per-host temp files and collected in IP order after all workers complete.
+- **Behavioral test suite** (Bash): `tests/bash/behavioral_tests.sh` — 62 tests covering `get_threat_context`, port table completeness, service token extraction, CRITICAL classification, report generation (with and without findings), and the `scan_host` worker function.
+- **Behavioral test suite** (PowerShell): `tests/PowerShell/WupWup.Behavioral.Tests.ps1` — Pester tests for `ThreatContext` table, port table keys, `Get-NetworkPrefix`, service token extraction, `Show-ScanHeader`/`Show-ScanComplete` overflow safety, `Generate-Report` content and clean-scan behavior, and `ScriptInfo` metadata.
+- **Clean-scan report** (both): when a user opts into report export but no findings are detected, a report is now generated anyway (documenting a clean scan result), rather than silently producing no file.
+- **Source guard** (Bash): `WUP-WUP.sh` now uses `[[ "${BASH_SOURCE[0]}" == "${0}" ]]` to skip `main()` when sourced, enabling the behavioral test suite to load functions without triggering interactive execution.
+
+### Fixed
+- **`Ask-Subnets` loop counter bug** (PowerShell): invalid subnet entries (wrong format or non-/24 prefix length) were consuming one of the user's 5 allowed slots. The prompt number now reflects how many valid subnets have been accepted, and users can re-enter after a validation error without wasting a slot.
+- **`Show-ScanHeader` box overflow** (PowerShell): box width was hard-coded at 50 characters; a long subnet string caused the right border to overflow. Width is now derived dynamically from the longest content line.
+
+### Changed
+- Script version bumped to `3.4.0` in both PowerShell and Bash implementations.
+
 ## [3.3.0] - 2026-08-19
 
 ### Added

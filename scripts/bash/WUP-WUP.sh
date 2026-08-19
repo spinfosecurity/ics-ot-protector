@@ -15,6 +15,7 @@
 #   ✓ Prioritizes findings by severity (CRITICAL vs HIGH)
 #   ✓ Provides CISA-aligned remediation guidance
 #   ✓ Generates simple text report (optional)
+#   ✓ Parallel per-host scanning (up to 50 concurrent workers)
 #
 # WHAT THIS DOES NOT DO:
 #   ✗ Does NOT test credentials or attempt authentication
@@ -35,7 +36,7 @@
 
 set -euo pipefail
 
-SCRIPT_VERSION="3.3.0"
+SCRIPT_VERSION="3.4.0"
 SCRIPT_REFERENCE="CISA Alert AA26-097A (2026-07-30)"
 
 # ---------------------------------------------------------------------------- #
@@ -481,72 +482,108 @@ main() {
     local start_epoch
     start_epoch=$(date +%s)
 
+    local max_workers=50
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap 'rm -rf "$tmp_dir"' EXIT
+
+    # Worker function: scan all ports on one IP, write findings to a temp file
+    scan_host() {
+        local ip="$1" timeout_sec="$2" out_file="$3"
+        for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
+            IFS='|' read -r port service severity <<< "$entry"
+            if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
+                local token
+                token=$(echo "$service" | grep -oE '^[A-Za-z0-9/]+')
+                local ctx
+                ctx=$(get_threat_context "$token")
+                if [[ "$severity" == "CRITICAL" ]]; then
+                    echo "CRITICAL|${ip}|${port}|${service}|Remote Access - Immediate Threat|${ctx}|BLOCK IMMEDIATELY or restrict to VPN only" >> "$out_file"
+                else
+                    echo "HIGH|${ip}|${port}|${service}|Web HMI Exposure|${ctx}|Restrict to engineering VLAN; implement MFA" >> "$out_file"
+                fi
+            fi
+        done
+        for entry in "${OT_PROTOCOL_PORTS[@]}"; do
+            IFS='|' read -r port protocol <<< "$entry"
+            if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
+                local token
+                token=$(echo "$protocol" | grep -oE '^[A-Za-z0-9/]+')
+                local ctx
+                ctx=$(get_threat_context "$token")
+                echo "HIGH|${ip}|${port}|${protocol}|OT Protocol Exposure|${ctx}|Remove from internet; implement firewall rules" >> "$out_file"
+            fi
+        done
+    }
+    export -f scan_host get_threat_context
+    export REMOTE_ACCESS_PORTS OT_PROTOCOL_PORTS
+
     for subnet in "${SUBNETS[@]}"; do
         local network_prefix
         network_prefix=$(echo "$subnet" | awk -F'[./]' '{print $1"."$2"."$3}')
         local subnet_start_epoch
         subnet_start_epoch=$(date +%s)
-        local subnet_findings=0
+        local subnet_tmp="${tmp_dir}/${subnet//\//_}"
+        mkdir -p "$subnet_tmp"
 
         show_scan_header "$subnet"
 
+        local active_workers=0
+        local completed=0
+
         for i in $(seq 1 254); do
             local ip="${network_prefix}.${i}"
-            (( TOTAL_SCANNED++ )) || true
+            local out_file="${subnet_tmp}/${i}.findings"
 
-            if (( i % 25 == 0 )); then
-                echo ""
-                show_progress "$i" 254 "$subnet_start_epoch"
-            fi
-
-            # --- Remote access ports ---
-            for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
-                IFS='|' read -r port service severity <<< "$entry"
-                if test_port "$ip" "$port" "$TIMEOUT"; then
-                    local first_token
-                    first_token=$(echo "$service" | grep -oE '^[A-Za-z0-9/]+')
-                    local threat_ctx
-                    threat_ctx=$(get_threat_context "$first_token")
-
-                    if [[ "$severity" == "CRITICAL" ]]; then
-                        echo ""
-                        printf "${RED}  [!!! CRITICAL !!!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
-                        printf "${RED}      %s${RESET}\n" "$threat_ctx"
-                        printf "${YELLOW}      Action: BLOCK IMMEDIATELY or restrict to VPN only${RESET}\n"
-                        FINDINGS_ALL+=("CRITICAL|${ip}|${port}|${service}|Remote Access - Immediate Threat|${threat_ctx}|BLOCK IMMEDIATELY or restrict to VPN only")
-                        (( CRITICAL_COUNT++ )) || true
-                    else
-                        echo ""
-                        printf "${YELLOW}  [!! HIGH !!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
-                        printf "${YELLOW}      %s${RESET}\n" "$threat_ctx"
-                        printf "${DARK_YELLOW}      Action: Restrict to engineering VLAN; implement MFA${RESET}\n"
-                        FINDINGS_ALL+=("HIGH|${ip}|${port}|${service}|Web HMI Exposure|${threat_ctx}|Restrict to engineering VLAN; implement MFA")
-                        (( HIGH_COUNT++ )) || true
-                    fi
-                    (( subnet_findings++ )) || true
-                fi
-            done
-
-            # --- OT protocol ports ---
-            for entry in "${OT_PROTOCOL_PORTS[@]}"; do
-                IFS='|' read -r port protocol <<< "$entry"
-                if test_port "$ip" "$port" "$TIMEOUT"; then
-                    local proto_token
-                    proto_token=$(echo "$protocol" | grep -oE '^[A-Za-z0-9/]+')
-                    local threat_ctx
-                    threat_ctx=$(get_threat_context "$proto_token")
+            # Throttle: wait if at max concurrency
+            while (( active_workers >= max_workers )); do
+                wait -n 2>/dev/null || wait
+                (( active_workers-- )) || true
+                (( completed++ )) || true
+                if (( completed % 25 == 0 )); then
                     echo ""
-                    printf "${MAGENTA}  [!! HIGH !!] %s:%s - %s${RESET}\n" "$ip" "$port" "$protocol"
-                    printf "${MAGENTA}      %s${RESET}\n" "$threat_ctx"
-                    printf "${DARK_YELLOW}      Action: Remove from internet; implement firewall rules${RESET}\n"
-                    FINDINGS_ALL+=("HIGH|${ip}|${port}|${protocol}|OT Protocol Exposure|${threat_ctx}|Remove from internet; implement firewall rules")
-                    (( HIGH_COUNT++ )) || true
-                    (( subnet_findings++ )) || true
+                    show_progress "$completed" 254 "$subnet_start_epoch"
                 fi
             done
+
+            scan_host "$ip" "$TIMEOUT" "$out_file" &
+            (( active_workers++ )) || true
         done
 
+        # Drain remaining workers
+        while (( active_workers > 0 )); do
+            wait -n 2>/dev/null || wait
+            (( active_workers-- )) || true
+            (( completed++ )) || true
+        done
         echo ""
+
+        # Collect and display results in IP order
+        local subnet_findings=0
+        for i in $(seq 1 254); do
+            local out_file="${subnet_tmp}/${i}.findings"
+            [[ -f "$out_file" ]] || continue
+            while IFS= read -r line; do
+                IFS='|' read -r sev ip port service threat_type threat_ctx action <<< "$line"
+                if [[ "$sev" == "CRITICAL" ]]; then
+                    printf "${RED}  [!!! CRITICAL !!!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
+                    printf "${RED}      %s${RESET}\n" "$threat_ctx"
+                    printf "${YELLOW}      Action: %s${RESET}\n" "$action"
+                    (( CRITICAL_COUNT++ )) || true
+                else
+                    local color="$YELLOW"
+                    [[ "$threat_type" == "OT Protocol Exposure" ]] && color="$MAGENTA"
+                    printf "${color}  [!! HIGH !!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
+                    printf "${color}      %s${RESET}\n" "$threat_ctx"
+                    printf "${DARK_YELLOW}      Action: %s${RESET}\n" "$action"
+                    (( HIGH_COUNT++ )) || true
+                fi
+                FINDINGS_ALL+=("$line")
+                (( subnet_findings++ )) || true
+            done < "$out_file"
+        done
+
+        (( TOTAL_SCANNED += 254 )) || true
         local subnet_elapsed=$(( $(date +%s) - subnet_start_epoch ))
         show_scan_complete "$subnet_elapsed" "$subnet_findings"
     done
@@ -599,7 +636,7 @@ main() {
         cl "$GRAY"  "  Continue monitoring and maintain security controls."
     fi
 
-    if $EXPORT_REPORT && (( total_findings > 0 )); then
+    if $EXPORT_REPORT; then
         echo ""
         cl "$CYAN" "Generating report..."
         local report_path
@@ -615,4 +652,7 @@ main() {
     read -r _
 }
 
-main "$@"
+# Only run main when executed directly, not when sourced (enables unit testing)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

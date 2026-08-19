@@ -27,7 +27,7 @@
     
     TECHNICAL LIMITATIONS:
     - TCP port scan only (no UDP, no banner grabbing)
-    - Single-threaded (~2-5 minutes per subnet)
+    - Parallel per-host scanning (up to 50 concurrent runspaces)
     - May produce false negatives behind aggressive firewalls
     - Requires local network access
     
@@ -36,9 +36,9 @@
     Only scan networks you own or have explicit written permission to test.
     
 .NOTES
-    Version: 3.2.0 (Enhanced UI/UX with Report Export)
+    Version: 3.4.0
     Name: WUP WUP - Water Utility Protector
-    Last Updated: 2026-08-02
+    Last Updated: 2026-08-19
     Reference: CISA Alert AA26-097A (2026-07-30), FBI PSA 2026-08-01
     
 .LINK
@@ -52,7 +52,7 @@
 $ScriptInfo = @{
     Name = "WUP WUP"
     FullName = "Water Utility Protector"
-    Version = "3.3.0"
+    Version = "3.4.0"
     Tagline = "WUP WUP - Emergency Response for Water Security"
     Reference = "CISA Alert AA26-097A (2026-07-30)"
 }
@@ -162,7 +162,7 @@ function Show-Intro {
 WATER UTILITY PROTECTOR
 $($ScriptInfo.Tagline)
 
-    Version: $($ScriptInfo.Version) | Updated: August 2026 | Bug fixes + cross-platform paths
+    Version: $($ScriptInfo.Version) | Updated: August 2026
 Reference: $($ScriptInfo.Reference)
 
 "@ -ForegroundColor Cyan
@@ -234,26 +234,26 @@ function Ask-Subnets {
     Write-Host "`n" -NoNewline
     
     $subnets = @()
-    $subnetCount = 0
     
-    do {
-        $subnetCount++
-        $subnet = Read-Host "  Subnet #$subnetCount"
+    while ($subnets.Count -lt 5) {
+        $promptNum = $subnets.Count + 1
+        $subnet = Read-Host "  Subnet #$promptNum"
         
-        if ($subnet) {
-            if ($subnet -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$') {
-                $prefixLength = [int]($subnet -split '/')[1]
-                if ($prefixLength -eq 24) {
-                    $subnets += $subnet
-                    Write-Host "  ✓ Added: $subnet" -ForegroundColor Green
-                } else {
-                    Write-Host "  ✗ Only /24 subnets are supported" -ForegroundColor Red
-                }
+        # Empty input = done
+        if ([string]::IsNullOrWhiteSpace($subnet)) { break }
+        
+        if ($subnet -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$') {
+            $prefixLength = [int]($subnet -split '/')[1]
+            if ($prefixLength -eq 24) {
+                $subnets += $subnet
+                Write-Host "  ✓ Added: $subnet" -ForegroundColor Green
             } else {
-                Write-Host "  ✗ Invalid format. Use: 192.168.10.0/24" -ForegroundColor Red
+                Write-Host "  ✗ Only /24 subnets are supported. Try again." -ForegroundColor Red
             }
+        } else {
+            Write-Host "  ✗ Invalid format. Use: 192.168.10.0/24. Try again." -ForegroundColor Red
         }
-    } while ($subnet -and $subnetCount -lt 5)
+    }
     
     if ($subnets.Count -eq 0) {
         Write-Host "`n  [!] No subnets entered. Exiting..." -ForegroundColor Red
@@ -502,21 +502,24 @@ function Show-ScanHeader {
         [datetime]$StartTime
     )
     
+    # Derive box width from content so long subnets never overflow
+    $timeStr = Get-Date -Format 'HH:mm:ss'
+    $scanLine  = " SCAN: $Subnet"
+    $timeLine  = " Started: $timeStr"
+    $innerWidth = [math]::Max(50, [math]::Max($scanLine.Length, $timeLine.Length) + 2)
+    
+    $scanPad = $innerWidth - $scanLine.Length - 1
+    $timePad = $innerWidth - $timeLine.Length - 1
+    
     Write-Host "`n" -NoNewline
-    Write-Host "┌" -ForegroundColor Cyan -NoNewline
-    Write-Host ("─" * 50) -ForegroundColor Cyan -NoNewline
-    Write-Host "┐" -ForegroundColor Cyan
+    Write-Host "┌$('─' * $innerWidth)┐" -ForegroundColor Cyan
     Write-Host "│" -ForegroundColor Cyan -NoNewline
-    Write-Host " SCAN: $Subnet" -ForegroundColor White -NoNewline
-    Write-Host (" " * (49 - $Subnet.Length)) -NoNewline
+    Write-Host "$scanLine$(' ' * $scanPad)" -ForegroundColor White -NoNewline
     Write-Host "│" -ForegroundColor Cyan
     Write-Host "│" -ForegroundColor Cyan -NoNewline
-    Write-Host " Started: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor DarkGray -NoNewline
-    Write-Host (" " * (30 - (Get-Date -Format 'HH:mm:ss').Length)) -NoNewline
+    Write-Host "$timeLine$(' ' * $timePad)" -ForegroundColor DarkGray -NoNewline
     Write-Host "│" -ForegroundColor Cyan
-    Write-Host "└" -ForegroundColor Cyan -NoNewline
-    Write-Host ("─" * 50) -ForegroundColor Cyan -NoNewline
-    Write-Host "┘" -ForegroundColor Cyan
+    Write-Host "└$('─' * $innerWidth)┘" -ForegroundColor Cyan
 }
 
 function Show-ScanComplete {
@@ -571,6 +574,76 @@ try {
     $highCount = 0
     $startTime = Get-Date
     
+    # Runspace script: scans all ports on a single IP and returns findings as objects
+    $scanScript = {
+        param($IP, $Timeout, $RemoteAccessPorts, $CriticalOTPorts, $ThreatContext)
+        
+        $results = @()
+        
+        foreach ($port in $RemoteAccessPorts.Keys) {
+            $tcpClient = $null
+            $open = $false
+            try {
+                $tcpClient = New-Object System.Net.Sockets.TcpClient
+                $ar = $tcpClient.BeginConnect($IP, $port, $null, $null)
+                if ($ar.AsyncWaitHandle.WaitOne($Timeout * 1000)) {
+                    try { $tcpClient.EndConnect($ar); $open = $tcpClient.Connected } catch {}
+                }
+            } catch {} finally {
+                if ($tcpClient) { try { $tcpClient.Dispose() } catch {} }
+            }
+            
+            if ($open) {
+                $service = $RemoteAccessPorts[$port]
+                $key = ($service -split '[\s(/]')[0]
+                $ctx = if ($ThreatContext.ContainsKey($key)) { $ThreatContext[$key] } else { "Exposed service — review access controls" }
+                $isCritical = $port -in @(3389, 5900, 5901, 22)
+                $results += [PSCustomObject]@{
+                    IP          = $IP
+                    Port        = $port
+                    Service     = $service
+                    Severity    = if ($isCritical) { "CRITICAL" } else { "HIGH" }
+                    ThreatType  = if ($isCritical) { "Remote Access - Immediate Threat" } else { "Web HMI Exposure" }
+                    ThreatContext = $ctx
+                    Action      = if ($isCritical) { "BLOCK IMMEDIATELY or restrict to VPN only" } else { "Restrict to engineering VLAN; implement MFA" }
+                }
+            }
+        }
+        
+        foreach ($port in $CriticalOTPorts.Keys) {
+            $tcpClient = $null
+            $open = $false
+            try {
+                $tcpClient = New-Object System.Net.Sockets.TcpClient
+                $ar = $tcpClient.BeginConnect($IP, $port, $null, $null)
+                if ($ar.AsyncWaitHandle.WaitOne($Timeout * 1000)) {
+                    try { $tcpClient.EndConnect($ar); $open = $tcpClient.Connected } catch {}
+                }
+            } catch {} finally {
+                if ($tcpClient) { try { $tcpClient.Dispose() } catch {} }
+            }
+            
+            if ($open) {
+                $protocol = $CriticalOTPorts[$port]
+                $key = ($protocol -split '[\s(/]')[0]
+                $ctx = if ($ThreatContext.ContainsKey($key)) { $ThreatContext[$key] } else { "OT protocol exposed to network — restrict access" }
+                $results += [PSCustomObject]@{
+                    IP          = $IP
+                    Port        = $port
+                    Service     = $protocol
+                    Severity    = "HIGH"
+                    ThreatType  = "OT Protocol Exposure"
+                    ThreatContext = $ctx
+                    Action      = "Remove from internet; implement firewall rules"
+                }
+            }
+        }
+        
+        return $results
+    }
+    
+    $maxConcurrency = 50   # simultaneous runspaces per subnet
+    
     foreach ($subnet in $subnets) {
         $networkPrefix = Get-NetworkPrefix -Subnet $subnet
         $subnetStartTime = Get-Date
@@ -578,88 +651,62 @@ try {
         
         Show-ScanHeader -Subnet $subnet -StartTime $subnetStartTime
         
+        # Build runspace pool
+        $pool = [RunspaceFactory]::CreateRunspacePool(1, $maxConcurrency)
+        $pool.Open()
+        
+        # Dispatch one runspace per host
+        $jobs = [System.Collections.Generic.List[hashtable]]::new()
         for ($i = 1; $i -le 254; $i++) {
             $ip = "$networkPrefix.$i"
-            $totalScanned++
-            
-            # Progress every 25 IPs
-            if ($i % 25 -eq 0) {
-                Show-ScanProgress -Current $i -Total 254 -StartTime $subnetStartTime
-            }
-            
-            # Remote access ports
-            foreach ($port in $RemoteAccessPorts.Keys) {
-                $portOpen = Test-Port -IP $ip -Port $port -Timeout $timeout
-                
-                if ($portOpen) {
-                    $service = $RemoteAccessPorts[$port]
-                    # Extract first token of the service name to match ThreatContext keys
-                    # e.g. "RDP (Remote Desktop)" -> "RDP", "HTTP (Web HMI)" -> "HTTP"
-                    $serviceName = ($service -split '[\s(/]')[0]
-                    $threatInfo = if ($ThreatContext.ContainsKey($serviceName)) { $ThreatContext[$serviceName] } else { "Exposed service — review access controls" }
-                    
-                    if ($port -in @(3389, 5900, 5901, 22)) {
-                        Write-Host "  [!!! CRITICAL !!!] $ip`:$port - $service" -ForegroundColor Red
-                        Write-Host "      $threatInfo" -ForegroundColor Red
-                        Write-Host "      Action: BLOCK IMMEDIATELY or restrict to VPN only" -ForegroundColor Yellow
-                        
-                        $findings += [PSCustomObject]@{
-                            IP = $ip
-                            Port = $port
-                            Service = $service
-                            Severity = "CRITICAL"
-                            ThreatType = "Remote Access - Immediate Threat"
-                            ThreatContext = $threatInfo
-                            Action = "BLOCK IMMEDIATELY or restrict to VPN only"
-                        }
-                        $criticalCount++
-                        $subnetFindings++
-                    } else {
-                        Write-Host "  [!! HIGH !!] $ip`:$port - $service" -ForegroundColor Yellow
-                        Write-Host "      $threatInfo" -ForegroundColor Yellow
-                        Write-Host "      Action: Restrict to engineering VLAN; implement MFA" -ForegroundColor DarkYellow
-                        
-                        $findings += [PSCustomObject]@{
-                            IP = $ip
-                            Port = $port
-                            Service = $service
-                            Severity = "HIGH"
-                            ThreatType = "Web HMI Exposure"
-                            ThreatContext = $threatInfo
-                            Action = "Restrict to engineering VLAN; implement MFA"
-                        }
-                        $highCount++
-                        $subnetFindings++
-                    }
-                }
-            }
-            
-            # OT protocols
-            foreach ($port in $CriticalOTPorts.Keys) {
-                $portOpen = Test-Port -IP $ip -Port $port -Timeout $timeout
-                
-                if ($portOpen) {
-                    $protocol = $CriticalOTPorts[$port]
-                    $protoName = ($protocol -split '[\s(/]')[0]
-                    $otThreatInfo = if ($ThreatContext.ContainsKey($protoName)) { $ThreatContext[$protoName] } else { "OT protocol exposed to network — restrict access" }
-                    Write-Host "  [!! HIGH !!] $ip`:$port - $protocol" -ForegroundColor Magenta
-                    Write-Host "      $otThreatInfo" -ForegroundColor Magenta
-                    Write-Host "      Action: Remove from internet; implement firewall rules" -ForegroundColor DarkYellow
-                    
-                    $findings += [PSCustomObject]@{
-                        IP = $ip
-                        Port = $port
-                        Service = $protocol
-                        Severity = "HIGH"
-                        ThreatType = "OT Protocol Exposure"
-                        ThreatContext = $otThreatInfo
-                        Action = "Remove from internet; implement firewall rules"
-                    }
-                    $subnetFindings++
-                    $highCount++
-                }
-            }
+            $ps = [PowerShell]::Create()
+            $ps.RunspacePool = $pool
+            [void]$ps.AddScript($scanScript)
+            [void]$ps.AddArgument($ip)
+            [void]$ps.AddArgument($timeout)
+            [void]$ps.AddArgument($RemoteAccessPorts)
+            [void]$ps.AddArgument($CriticalOTPorts)
+            [void]$ps.AddArgument($ThreatContext)
+            $jobs.Add(@{ PS = $ps; Handle = $ps.BeginInvoke(); IP = $ip })
         }
+        
+        # Collect results as they complete; show progress
+        $completed = 0
+        while ($completed -lt $jobs.Count) {
+            $done = $jobs | Where-Object { $_.Handle.IsCompleted }
+            foreach ($job in $done) {
+                $ipResults = $job.PS.EndInvoke($job.Handle)
+                $job.PS.Dispose()
+                $jobs.Remove($job)
+                $completed++
+                $totalScanned++
+                
+                if ($completed % 25 -eq 0) {
+                    Show-ScanProgress -Current $completed -Total 254 -StartTime $subnetStartTime
+                }
+                
+                foreach ($r in $ipResults) {
+                    if ($r.Severity -eq "CRITICAL") {
+                        Write-Host "  [!!! CRITICAL !!!] $($r.IP):$($r.Port) - $($r.Service)" -ForegroundColor Red
+                        Write-Host "      $($r.ThreatContext)" -ForegroundColor Red
+                        Write-Host "      Action: $($r.Action)" -ForegroundColor Yellow
+                        $criticalCount++
+                    } else {
+                        $color = if ($r.ThreatType -eq "OT Protocol Exposure") { "Magenta" } else { "Yellow" }
+                        Write-Host "  [!! HIGH !!] $($r.IP):$($r.Port) - $($r.Service)" -ForegroundColor $color
+                        Write-Host "      $($r.ThreatContext)" -ForegroundColor $color
+                        Write-Host "      Action: $($r.Action)" -ForegroundColor DarkYellow
+                        $highCount++
+                    }
+                    $findings += $r
+                    $subnetFindings++
+                }
+            }
+            if ($jobs.Count -gt 0) { Start-Sleep -Milliseconds 100 }
+        }
+        
+        $pool.Close()
+        $pool.Dispose()
         
         Show-ScanComplete -StartTime $subnetStartTime -FindingsCount $subnetFindings
     }
@@ -714,8 +761,8 @@ try {
         Write-Host "  Continue monitoring and maintain security controls." -ForegroundColor DarkGray
     }
     
-    # Export report if requested
-    if ($exportReport -and $findings.Count -gt 0) {
+    # Export report if requested (always generate when requested, even for clean scans)
+    if ($exportReport) {
         Write-Host "`n" -NoNewline
         Write-Host "Generating report..." -ForegroundColor Cyan
         $reportPath = Generate-Report -Subnets $subnets -Timeout $timeout -Findings $findings `

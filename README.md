@@ -124,7 +124,7 @@ water-utility-protector/
 
 ### Limitations
 - TCP port scan only (no UDP, no banner grabbing)
-- Single-threaded (~2–5 minutes per /24 subnet)
+- Parallel per-host scanning (up to 50 concurrent workers); actual speed depends on network latency and timeout setting
 - May produce false negatives behind aggressive firewalls
 - Requires local network access to the OT subnet being scanned
 

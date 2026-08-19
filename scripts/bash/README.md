@@ -30,6 +30,8 @@ Then invoke with the updated Bash path, or add it to your `PATH`.
 - Color-coded console output (ANSI escape codes)
 - Per-subnet progress bars
 - Optional text report export to `~/WaterUtilitySecurity/Reports/`
+- Parallel per-host scanning (up to 50 concurrent background workers)
+- Clean-scan report generated even when no findings are detected
 - No external dependencies beyond standard shell utilities listed above
 
 See the root [README.md](../../README.md) for full documentation.
