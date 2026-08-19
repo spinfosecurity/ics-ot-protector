@@ -72,7 +72,7 @@ chmod +x scripts/bash/WUP-WUP.sh
 ./scripts/bash/WUP-WUP.sh
 ```
 
-Both versions deliver identical scanning logic, threat intelligence, and reporting — choose whichever matches your operating system.
+Both versions deliver identical scanning logic, threat intelligence, color-coded output, and report export — choose whichever matches your operating system.
 
 ## What This Does NOT Do
 
@@ -119,12 +119,12 @@ water-utility-protector/
 | Platform | Script | Requirements |
 |----------|--------|---------------|
 | Windows | PowerShell (`WUP-WUP.ps1`) | PowerShell 5.1+, .NET Framework 4.7+ |
-| Linux | Bash (`WUP-WUP.sh`) | Bash 4.0+, standard utilities |
-| macOS | Bash (`WUP-WUP.sh`) | Bash 4.0+, standard utilities |
+| Linux | Bash (`WUP-WUP.sh`) | Bash 4.0+, `bc`, `timeout`, standard utilities |
+| macOS | Bash (`WUP-WUP.sh`) | Bash 4.0+, `bc`, `timeout` (via `coreutils`), standard utilities |
 
 ### Limitations
 - TCP port scan only (no UDP, no banner grabbing)
-- Single-threaded (~2–5 minutes per /24 subnet)
+- Parallel per-host scanning (up to 50 concurrent workers); actual speed depends on network latency and timeout setting
 - May produce false negatives behind aggressive firewalls
 - Requires local network access to the OT subnet being scanned
 
