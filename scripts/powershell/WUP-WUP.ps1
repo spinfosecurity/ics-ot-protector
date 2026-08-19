@@ -52,7 +52,7 @@
 $ScriptInfo = @{
     Name = "WUP WUP"
     FullName = "Water Utility Protector"
-    Version = "3.2.0"
+    Version = "3.3.0"
     Tagline = "WUP WUP - Emergency Response for Water Security"
     Reference = "CISA Alert AA26-097A (2026-07-30)"
 }
@@ -79,15 +79,17 @@ $RemoteAccessPorts = @{
 }
 
 $ThreatContext = @{
-    "RDP" = "PRIMARY ATTACK VECTOR - 70% of water sector breaches (CISA 2026)"
-    "VNC" = "Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)"
-    "SSH" = "CISA-flagged in July 2026 water sector attacks"
+    "RDP"         = "PRIMARY ATTACK VECTOR - 70% of water sector breaches (CISA 2026)"
+    "VNC"         = "Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)"
+    "SSH"         = "CISA-flagged in July 2026 water sector attacks"
     "EtherNet/IP" = "Rockwell MicroLogix 1400 targeted (4,148 exposed globally)"
-    "Modbus" = "Unauthenticated - easily manipulated (CVSS 9.3)"
-    "S7" = "Siemens SIMATIC S7-1200 (4,117 exposed globally)"
-    "Web HMI" = "Internet-exposed HMIs per CISA/EPA joint advisory"
-    "DNP3" = "Water sector SCADA protocol - no encryption"
-    "UniLogic" = "Unitronics Vision PLC - default password '1111'"
+    "Modbus"      = "Unauthenticated - easily manipulated (CVSS 9.3)"
+    "S7"          = "Siemens SIMATIC S7-1200 (4,117 exposed globally)"
+    "HTTP"        = "Internet-exposed Web HMI per CISA/EPA joint advisory"
+    "HTTPS"       = "Internet-exposed Web HMI per CISA/EPA joint advisory"
+    "DNP3"        = "Water sector SCADA protocol - no encryption"
+    "UniLogic"    = "Unitronics Vision PLC - default password '1111'"
+    "BACnet/IP"   = "Building/HVAC integration protocol - no authentication"
 }
 
 # ============================================================================
@@ -160,7 +162,7 @@ function Show-Intro {
 WATER UTILITY PROTECTOR
 $($ScriptInfo.Tagline)
 
-Version: $($ScriptInfo.Version) | Updated: August 2026
+    Version: $($ScriptInfo.Version) | Updated: August 2026 | Bug fixes + cross-platform paths
 Reference: $($ScriptInfo.Reference)
 
 "@ -ForegroundColor Cyan
@@ -276,20 +278,23 @@ function Ask-Timeout {
     Write-Host "  └────────────┴──────────────────────────────────────────┘" -ForegroundColor DarkGray
     Write-Host "`n" -NoNewline
     
+    $timeout = $null
     do {
         $timeoutInput = Read-Host "  Enter timeout (1-30 seconds, default: 2)"
         
         if ([string]::IsNullOrWhiteSpace($timeoutInput)) {
             $timeout = 2
         } elseif ($timeoutInput -match '^\d+$') {
-            $timeout = [int]$timeoutInput
-            if ($timeout -lt 1 -or $timeout -gt 30) {
+            $timeoutVal = [int]$timeoutInput
+            if ($timeoutVal -lt 1 -or $timeoutVal -gt 30) {
                 Write-Host "  ✗ Please enter a value between 1 and 30" -ForegroundColor Red
+            } else {
+                $timeout = $timeoutVal
             }
         } else {
             Write-Host "  ✗ Invalid input. Enter a number between 1 and 30" -ForegroundColor Red
         }
-    } while (-not $timeout)
+    } while ($null -eq $timeout)
     
     return $timeout
 }
@@ -302,7 +307,7 @@ function Ask-ExportReport {
     Write-Host "`n" -NoNewline
     Write-Host "  • Report includes all findings with timestamps" -ForegroundColor DarkGray
     Write-Host "  • Easy to share with IT team or management" -ForegroundColor DarkGray
-    Write-Host "  • Saved to: C:\WaterUtilitySecurity\Reports\" -ForegroundColor DarkGray
+    Write-Host "  • Saved to: ~/WaterUtilitySecurity/Reports/" -ForegroundColor DarkGray
     Write-Host "`n" -NoNewline
     
     $export = Read-Host "  Save report? (Y/N)"
@@ -327,9 +332,12 @@ function Confirm-Scan {
         Write-Host "    • $subnet" -ForegroundColor White
     }
     Write-Host "`n" -NoNewline
+    $totalPorts = $RemoteAccessPorts.Count + $CriticalOTPorts.Count
+    $estimatedSeconds = $Subnets.Count * 254 * $Timeout * $totalPorts / 60
+    $estimatedMinutes = [math]::Round([math]::Max($estimatedSeconds / 60, 0.5), 1)
     Write-Host "  Timeout: ${Timeout} seconds per IP" -ForegroundColor Yellow
     Write-Host "  Total IPs: $($Subnets.Count * 254)" -ForegroundColor Yellow
-    Write-Host "  Estimated time: $([math]::Round($Subnets.Count * 2.5, 1)) minutes" -ForegroundColor Yellow
+    Write-Host "  Estimated time (worst case): ~$estimatedMinutes minutes" -ForegroundColor Yellow
     Write-Host "  Report export: $(if ($ExportReport) { 'Yes' } else { 'No' })" -ForegroundColor $(if ($ExportReport) { 'Green' } else { 'DarkGray' })
     Write-Host "`n" -NoNewline
     
@@ -355,7 +363,8 @@ function Generate-Report {
     )
     
     try {
-        $reportDir = "C:\WaterUtilitySecurity\Reports"
+        # Use a cross-platform path: ~/WaterUtilitySecurity/Reports on all OSes
+        $reportDir = Join-Path ([System.Environment]::GetFolderPath('UserProfile')) "WaterUtilitySecurity\Reports"
         if (!(Test-Path $reportDir)) {
             New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
         }
@@ -432,6 +441,7 @@ HIGH-PRIORITY FINDINGS
 
 [$($finding.IP):$($finding.Port)] - $($finding.Service)
   Type: $($finding.ThreatType)
+  Context: $($finding.ThreatContext)
   Action: $($finding.Action)
 "@
             }
@@ -522,9 +532,11 @@ function Show-ScanComplete {
     Write-Host "┌" -ForegroundColor Green -NoNewline
     Write-Host ("─" * 48) -ForegroundColor Green -NoNewline
     Write-Host "┐" -ForegroundColor Green
+    $completeLine = " COMPLETE: $elapsedSeconds seconds, $FindingsCount findings"
+    $padWidth = [math]::Max(0, 47 - $completeLine.Length)
     Write-Host "  │" -ForegroundColor Green -NoNewline
-    Write-Host " COMPLETE: $elapsedSeconds seconds, $FindingsCount findings" -ForegroundColor White -NoNewline
-    Write-Host (" " * (47 - ($elapsedSeconds.ToString().Length + $FindingsCount.ToString().Length + 28))) -NoNewline
+    Write-Host $completeLine -ForegroundColor White -NoNewline
+    Write-Host (" " * $padWidth) -NoNewline
     Write-Host "│" -ForegroundColor Green
     Write-Host "  └" -ForegroundColor Green -NoNewline
     Write-Host ("─" * 48) -ForegroundColor Green -NoNewline
@@ -581,8 +593,10 @@ try {
                 
                 if ($portOpen) {
                     $service = $RemoteAccessPorts[$port]
-                    $serviceName = ($service -split ' ')[0]
-                    $threatInfo = $ThreatContext[$serviceName]
+                    # Extract first token of the service name to match ThreatContext keys
+                    # e.g. "RDP (Remote Desktop)" -> "RDP", "HTTP (Web HMI)" -> "HTTP"
+                    $serviceName = ($service -split '[\s(/]')[0]
+                    $threatInfo = if ($ThreatContext.ContainsKey($serviceName)) { $ThreatContext[$serviceName] } else { "Exposed service — review access controls" }
                     
                     if ($port -in @(3389, 5900, 5901, 22)) {
                         Write-Host "  [!!! CRITICAL !!!] $ip`:$port - $service" -ForegroundColor Red
@@ -626,7 +640,11 @@ try {
                 
                 if ($portOpen) {
                     $protocol = $CriticalOTPorts[$port]
-                    Write-Host "  [!] $ip`:$port - $protocol" -ForegroundColor Magenta
+                    $protoName = ($protocol -split '[\s(/]')[0]
+                    $otThreatInfo = if ($ThreatContext.ContainsKey($protoName)) { $ThreatContext[$protoName] } else { "OT protocol exposed to network — restrict access" }
+                    Write-Host "  [!! HIGH !!] $ip`:$port - $protocol" -ForegroundColor Magenta
+                    Write-Host "      $otThreatInfo" -ForegroundColor Magenta
+                    Write-Host "      Action: Remove from internet; implement firewall rules" -ForegroundColor DarkYellow
                     
                     $findings += [PSCustomObject]@{
                         IP = $ip
@@ -634,9 +652,11 @@ try {
                         Service = $protocol
                         Severity = "HIGH"
                         ThreatType = "OT Protocol Exposure"
+                        ThreatContext = $otThreatInfo
                         Action = "Remove from internet; implement firewall rules"
                     }
                     $subnetFindings++
+                    $highCount++
                 }
             }
         }
@@ -652,21 +672,28 @@ try {
     Clear-Host
     Show-Header "WUP WUP - Scan Complete"
     
+    $totalPorts = $totalScanned * ($RemoteAccessPorts.Count + $CriticalOTPorts.Count)
+    $boxWidth = 50
+    function Format-BoxLine([string]$label, [string]$value) {
+        $content = " $label $value"
+        $pad = [math]::Max(0, $boxWidth - $content.Length - 1)
+        return "│$content$(' ' * $pad)│"
+    }
     Write-Host "SCAN STATISTICS:" -ForegroundColor White
-    Write-Host "  ┌────────────────────────────────────────────────┐" -ForegroundColor DarkGray
-    Write-Host "  │ Total IPs Scanned:     $totalScanned" -ForegroundColor White
-    Write-Host "  │ Total Ports Tested:    $($totalScanned * ($RemoteAccessPorts.Count + $CriticalOTPorts.Count))" -ForegroundColor White
-    Write-Host "  │ Scan Duration:         $([math]::Round($totalElapsed.TotalSeconds, 1)) seconds" -ForegroundColor White
-    Write-Host "  │ Average Rate:          $scanRate IPs/second" -ForegroundColor White
-    Write-Host "  └────────────────────────────────────────────────┘" -ForegroundColor DarkGray
+    Write-Host "  ┌$('─' * $boxWidth)┐" -ForegroundColor DarkGray
+    Write-Host "  $(Format-BoxLine 'Total IPs Scanned:    ' $totalScanned)" -ForegroundColor White
+    Write-Host "  $(Format-BoxLine 'Total Ports Tested:   ' $totalPorts)" -ForegroundColor White
+    Write-Host "  $(Format-BoxLine 'Scan Duration:        ' "$([math]::Round($totalElapsed.TotalSeconds, 1)) seconds")" -ForegroundColor White
+    Write-Host "  $(Format-BoxLine 'Average Rate:         ' "$scanRate IPs/second")" -ForegroundColor White
+    Write-Host "  └$('─' * $boxWidth)┘" -ForegroundColor DarkGray
     Write-Host "`n" -NoNewline
     
     Write-Host "FINDINGS SUMMARY:" -ForegroundColor White
-    Write-Host "  ┌────────────────────────────────────────────────┐" -ForegroundColor DarkGray
-    Write-Host "  │ Critical:  $criticalCount" -ForegroundColor $(if ($criticalCount -gt 0) { 'Red' } else { 'White' })
-    Write-Host "  │ High:      $highCount" -ForegroundColor $(if ($highCount -gt 0) { 'Yellow' } else { 'White' })
-    Write-Host "  │ Total:     $($findings.Count)" -ForegroundColor $(if ($findings.Count -gt 0) { 'Red' } else { 'Green' })
-    Write-Host "  └────────────────────────────────────────────────┘" -ForegroundColor DarkGray
+    Write-Host "  ┌$('─' * $boxWidth)┐" -ForegroundColor DarkGray
+    Write-Host "  $(Format-BoxLine 'Critical:  ' $criticalCount)" -ForegroundColor $(if ($criticalCount -gt 0) { 'Red' } else { 'White' })
+    Write-Host "  $(Format-BoxLine 'High:      ' $highCount)" -ForegroundColor $(if ($highCount -gt 0) { 'Yellow' } else { 'White' })
+    Write-Host "  $(Format-BoxLine 'Total:     ' $findings.Count)" -ForegroundColor $(if ($findings.Count -gt 0) { 'Red' } else { 'Green' })
+    Write-Host "  └$('─' * $boxWidth)┘" -ForegroundColor DarkGray
     Write-Host "`n" -NoNewline
     
     if ($findings.Count -gt 0) {
