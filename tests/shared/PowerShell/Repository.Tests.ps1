@@ -42,6 +42,7 @@ Describe 'ICS OT Protector monorepo' {
             'docs/safe-operation.md'
             'docs/threat-model.md'
             'docs/sample-report.md'
+            'docs/sample-report.json'
         ) | ForEach-Object {
             Test-Path (Join-Path $script:Root $_) | Should -BeTrue -Because "$_ must exist"
         }

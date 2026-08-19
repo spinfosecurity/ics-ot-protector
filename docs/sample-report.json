@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-08-19T14:30:00",
+  "metadata": {
+    "sector": "water",
+    "scanner": "WUP WUP",
+    "version": "3.4.0",
+    "reference": "CISA Alert AA26-097A (2026-07-30)",
+    "subnets": "192.168.10.0/24",
+    "timeout_seconds": 2,
+    "total_scanned": 254,
+    "critical_count": 1,
+    "high_count": 2,
+    "duration_seconds": 48.3
+  },
+  "findings": [
+    {
+      "Timestamp": "2026-08-19T14:29:12",
+      "Host": "192.168.10.78",
+      "Port": 5900,
+      "Service": "VNC (Virtual Network Computing)",
+      "Severity": "CRITICAL",
+      "Category": "Remote Access",
+      "Description": "VNC exposed — primary ransomware entry vector per CISA AA26-097A",
+      "Remediation": "BLOCK IMMEDIATELY or restrict to VPN only"
+    },
+    {
+      "Timestamp": "2026-08-19T14:29:45",
+      "Host": "192.168.10.102",
+      "Port": 44818,
+      "Service": "EtherNet/IP (CIP)",
+      "Severity": "HIGH",
+      "Category": "OT Protocol Exposure",
+      "Description": "EtherNet/IP exposed — Allen-Bradley PLC/HMI communication port",
+      "Remediation": "Remove from internet; implement firewall rules"
+    },
+    {
+      "Timestamp": "2026-08-19T14:29:58",
+      "Host": "192.168.10.113",
+      "Port": 502,
+      "Service": "Modbus TCP",
+      "Severity": "HIGH",
+      "Category": "OT Protocol Exposure",
+      "Description": "Modbus TCP exposed — widely targeted ICS protocol",
+      "Remediation": "Remove from internet; implement firewall rules"
+    }
+  ]
+}

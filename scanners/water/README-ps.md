@@ -24,7 +24,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 - Interactive multi-step wizard (subnet selection, timeout, report export)
 - Color-coded console output with CRITICAL / HIGH severity tagging
 - Per-subnet progress bars and real-time scan rate display
-- Optional text report export to `~/WaterUtilitySecurity/Reports/`
+- Optional JSON report export to `~/WaterUtilitySecurity/Reports/` (`WUP-results-*.json`)
 - Parallel per-host scanning via runspace pool (up to 50 concurrent runspaces)
 - Cross-platform report path (works on Windows, Linux, macOS)
 - Clean-scan report generated even when no findings are detected

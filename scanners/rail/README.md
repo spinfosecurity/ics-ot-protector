@@ -27,7 +27,7 @@ pwsh ./scanners/rail/powershell/ROP.ps1 -Subnets 10.10.20.0/24 -EotHotOnly
 | ICS Protocols | 502, 20000, 44818, 2404, 102 | Modbus, DNP3, EtherNet/IP, IEC 60870-5-104, S7 |
 | Rail-Specific | EOT/HOT, RailSafe API | CVE-2025-1727 indicators |
 
-Reports are exported as **JSON and CSV** with CRITICAL/HIGH/MEDIUM severity labels.
+Reports are exported as **JSON** (`ROP-results-*.json`) with CRITICAL/HIGH/MEDIUM severity labels.
 
 ## Documentation
 
@@ -39,4 +39,4 @@ Reports are exported as **JSON and CSV** with CRITICAL/HIGH/MEDIUM severity labe
 
 ## Version
 
-Current: **1.0.0** (CLI-driven, multi-subnet, JSON/CSV report output)
+Current: **1.0.0** (CLI-driven, multi-subnet, JSON report output)

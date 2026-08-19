@@ -13,7 +13,7 @@ for sector in "${SECTORS[@]}"; do
   for script in "${sh_files[@]}"; do bash -n "$script"; done
 done
 
-for file in CHANGELOG.md CODE_OF_CONDUCT.md docs/safe-operation.md docs/threat-model.md docs/sample-report.md; do
+for file in CHANGELOG.md CODE_OF_CONDUCT.md docs/safe-operation.md docs/threat-model.md docs/sample-report.md docs/sample-report.json; do
   [[ -f "${ROOT}/${file}" ]] || { echo "Missing required file: ${file}" >&2; exit 1; }
 done
 
@@ -25,4 +25,5 @@ for sector in "${SECTORS[@]}"; do
 done
 
 grep -Eiq 'authorized|permission' "${ROOT}/README.md"
+python3 -c "import json; json.load(open('${ROOT}/docs/sample-report.json'))"
 printf 'Monorepo validation passed for %d sector scanner(s).\n' "${#SECTORS[@]}"

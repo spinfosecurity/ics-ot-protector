@@ -4,16 +4,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-08-19
+
 ### Added
-- **Shared sector YAML/JSON configuration** under `config/sectors/` — single source of truth for port tables, threat context, CVE checks, and vendor alerts
-- **Config compile + validation** — `scripts/config/compile_configs.py`, `tests/shared/bash/validate_configs.sh`
-- **Shared config loaders** — `scanners/_shared/Import-SectorConfig.ps1` and `load_sector_config.sh`
-- **Behavioral tests for EGP, BAS, and ROP** — Pester suites plus shared Bash config behavioral tests
-- **Config schema tests** — `tests/shared/PowerShell/Config.Tests.ps1`
+- **Unified JSON export** — shared `Export-ScanReport.ps1` and `export_scan_report.sh`; all scanners write `schema_version` 1.0 JSON reports
+- **Unified sector launcher** — `scripts/ics-ot-protector.ps1` and `scripts/ics-ot-protector.sh`
+- **Sample JSON report** — `docs/sample-report.json` with schema documentation
+- **Export and launcher tests** — `tests/shared/PowerShell/Export.Tests.ps1`, `tests/shared/bash/launcher_tests.sh`
+- **CI config drift guard** — fails when compiled `config/sectors/*.json` does not match YAML
 
 ### Changed
-- All eight sector scanners now load port/CVE definitions from compiled JSON instead of hardcoded in-script tables
-- EGP, BAS, and ROP scripts support test-mode guards (`$EGP_TEST_MODE`, `$BAS_TEST_MODE`, `$ROP_TEST_MODE`) for dot-source behavioral testing
+- EGP, BAS, ROP, and WUP scanners now export JSON only (CSV and text report files removed)
+- Root and sector documentation split into shared baseline + sector addenda
+- EGP and ROP PowerShell scanners deduplicated to shared `ScannerHelpers.ps1`
 
 ## [4.0.0] - 2026-08-19
 - **Unified ICS OT Protector monorepo** — consolidated four sector-specific scanner projects into one repository:
@@ -23,6 +26,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
   - `scanners/rail/` — Rail-OT-Protector (ROP) v1.0.0
 - **Sector-specific documentation** under `docs/sectors/{water,energy-grid,bas,rail}/`
 - **Monorepo test suite** — shared validation plus per-sector repository and behavioral tests
+- **Shared sector YAML/JSON configuration** under `config/sectors/`
 - **Backward-compatible launchers** for the water scanner at legacy `scripts/` paths
 - **Sector READMEs** with quick-start commands and port coverage tables for each scanner
 

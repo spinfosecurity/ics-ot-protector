@@ -1,27 +1,13 @@
-# Threat Model
+# Threat Model — Rail & Transit
 
-## Security Objective
+> Shared baseline: [ICS OT Protector threat model](../../threat-model.md)
 
-Rail-OT-Protector helps authorized defenders identify reachable remote-access services and industrial protocol ports in rail and transit OT/SCADA environments. Its output supports asset review, segmentation validation, and remediation prioritization.
+## Sector Objective
 
-## In Scope
+Identify EOT/HOT remote-linking exposure (CVE-2025-1727), RailSafe legacy SCADA API ports, standard ICS protocols, and remote-access services on authorized CIDR ranges.
 
-- TCP reachability checks for configured targets and ports.
-- Detection logic that identifies exposure candidates from approved scans.
-- Local generation of JSON and CSV reports.
+## Sector-Specific Considerations
 
-## Out of Scope
-
-- Exploitation, credential testing, password guessing, authentication bypass, or command execution.
-- Proof that a reachable port belongs to a specific device, firmware version, or vulnerable product.
-- Malware detection, intrusion attribution, compliance certification, or continuous monitoring.
-
-## Assumptions and Risks
-
-- Firewalls, routing, NAT, and host controls can create false positives and false negatives.
-- Some OT environments are sensitive to connection attempts; authorization and operational coordination are mandatory.
-- Reports may reveal IP addresses, service exposure, and infrastructure details. Protect them as sensitive operational data.
-
-## Interpretation
-
-A finding means the scan host could reach a service at the recorded address and port under the conditions of that scan. Validate ownership, device type, business context, compensating controls, and actual vulnerability status before taking operational action.
+- Supports arbitrary CIDR (/8–/32) with configurable thread pool — use the narrowest approved subnet.
+- `--eot_hot_only` / `-EotHotOnly` fast mode limits checks to EOT/HOT-related ports.
+- CLI-driven scanner writes `ROP-results-*.json` to the configured output directory.
