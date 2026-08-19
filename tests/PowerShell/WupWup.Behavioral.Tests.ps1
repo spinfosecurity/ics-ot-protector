@@ -1,88 +1,97 @@
-# Load the script's functions and configuration without triggering
-# the interactive main-execution block.
-# $WUP_TEST_MODE causes the script to return early, before the try{} session.
-$WUP_TEST_MODE = $true
-. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'scripts' 'powershell' 'WUP-WUP.ps1')
+BeforeAll {
+    # Load all functions and configuration from the script without triggering
+    # the interactive main-execution block. $WUP_TEST_MODE causes the script
+    # to return before the try{} session starts.
+    $WUP_TEST_MODE = $true
+    . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'scripts' 'powershell' 'WUP-WUP.ps1')
+
+    # Capture everything loaded by dot-source into $script: scope so it is
+    # accessible inside all It blocks (Pester 6 runs It in a child scope).
+    $script:ScriptInfo        = $ScriptInfo
+    $script:ThreatContext     = $ThreatContext
+    $script:RemoteAccessPorts = $RemoteAccessPorts
+    $script:CriticalOTPorts   = $CriticalOTPorts
+}
 
 Describe 'Script meta' {
     It 'ScriptInfo.Version is populated' {
-        $ScriptInfo.Version | Should -Not -BeNullOrEmpty
+        $script:ScriptInfo.Version | Should -Not -BeNullOrEmpty
     }
 
     It 'ScriptInfo.Reference mentions CISA' {
-        $ScriptInfo.Reference | Should -Match 'CISA'
+        $script:ScriptInfo.Reference | Should -Match 'CISA'
     }
 }
 
 Describe 'ThreatContext table' {
     It 'contains an entry for RDP' {
-        $ThreatContext['RDP'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['RDP'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for VNC' {
-        $ThreatContext['VNC'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['VNC'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for SSH' {
-        $ThreatContext['SSH'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['SSH'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for HTTP (Web HMI)' {
-        $ThreatContext['HTTP'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['HTTP'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for HTTPS (Web HMI)' {
-        $ThreatContext['HTTPS'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['HTTPS'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for Modbus' {
-        $ThreatContext['Modbus'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['Modbus'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for EtherNet/IP' {
-        $ThreatContext['EtherNet/IP'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['EtherNet/IP'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for DNP3' {
-        $ThreatContext['DNP3'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['DNP3'] | Should -Not -BeNullOrEmpty
     }
 
     It 'contains an entry for UniLogic' {
-        $ThreatContext['UniLogic'] | Should -Not -BeNullOrEmpty
+        $script:ThreatContext['UniLogic'] | Should -Not -BeNullOrEmpty
     }
 }
 
 Describe 'Port tables' {
     It 'RemoteAccessPorts includes RDP (3389)' {
-        $RemoteAccessPorts.ContainsKey(3389) | Should -BeTrue
+        $script:RemoteAccessPorts.ContainsKey(3389) | Should -BeTrue
     }
 
     It 'RemoteAccessPorts includes VNC (5900)' {
-        $RemoteAccessPorts.ContainsKey(5900) | Should -BeTrue
+        $script:RemoteAccessPorts.ContainsKey(5900) | Should -BeTrue
     }
 
     It 'RemoteAccessPorts includes SSH (22)' {
-        $RemoteAccessPorts.ContainsKey(22) | Should -BeTrue
+        $script:RemoteAccessPorts.ContainsKey(22) | Should -BeTrue
     }
 
     It 'RemoteAccessPorts includes HTTP (80)' {
-        $RemoteAccessPorts.ContainsKey(80) | Should -BeTrue
+        $script:RemoteAccessPorts.ContainsKey(80) | Should -BeTrue
     }
 
     It 'CriticalOTPorts includes Modbus (502)' {
-        $CriticalOTPorts.ContainsKey(502) | Should -BeTrue
+        $script:CriticalOTPorts.ContainsKey(502) | Should -BeTrue
     }
 
     It 'CriticalOTPorts includes EtherNet/IP (44818)' {
-        $CriticalOTPorts.ContainsKey(44818) | Should -BeTrue
+        $script:CriticalOTPorts.ContainsKey(44818) | Should -BeTrue
     }
 
     It 'CriticalOTPorts includes S7 (102)' {
-        $CriticalOTPorts.ContainsKey(102) | Should -BeTrue
+        $script:CriticalOTPorts.ContainsKey(102) | Should -BeTrue
     }
 
     It 'CriticalOTPorts includes DNP3 (20000)' {
-        $CriticalOTPorts.ContainsKey(20000) | Should -BeTrue
+        $script:CriticalOTPorts.ContainsKey(20000) | Should -BeTrue
     }
 }
 
@@ -98,30 +107,30 @@ Describe 'Get-NetworkPrefix' {
 
 Describe 'ThreatContext service token extraction' {
     It 'extracts RDP correctly' {
-        $service = $RemoteAccessPorts[3389]
+        $service = $script:RemoteAccessPorts[3389]
         $token = ($service -split '[\s(/]')[0]
-        $ThreatContext.ContainsKey($token) | Should -BeTrue
+        $script:ThreatContext.ContainsKey($token) | Should -BeTrue
     }
 
     It 'extracts HTTP from Web HMI label' {
-        $service = $RemoteAccessPorts[80]
+        $service = $script:RemoteAccessPorts[80]
         $token = ($service -split '[\s(/]')[0]
         $token | Should -Be 'HTTP'
-        $ThreatContext.ContainsKey($token) | Should -BeTrue
+        $script:ThreatContext.ContainsKey($token) | Should -BeTrue
     }
 
     It 'extracts HTTPS from Web HMI label' {
-        $service = $RemoteAccessPorts[443]
+        $service = $script:RemoteAccessPorts[443]
         $token = ($service -split '[\s(/]')[0]
         $token | Should -Be 'HTTPS'
-        $ThreatContext.ContainsKey($token) | Should -BeTrue
+        $script:ThreatContext.ContainsKey($token) | Should -BeTrue
     }
 
     It 'extracts Modbus from Modbus TCP label' {
-        $protocol = $CriticalOTPorts[502]
+        $protocol = $script:CriticalOTPorts[502]
         $token = ($protocol -split '[\s(/]')[0]
         $token | Should -Be 'Modbus'
-        $ThreatContext.ContainsKey($token) | Should -BeTrue
+        $script:ThreatContext.ContainsKey($token) | Should -BeTrue
     }
 }
 
