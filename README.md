@@ -9,7 +9,7 @@ Previously distributed as four separate repositories, all scanners now live here
 | Water & Wastewater | [WUP WUP](scanners/water/) | v3.4.0 — interactive, parallel scanning | PowerShell + Bash |
 | Power Grid & Substation | [Energy Grid Protector (EGP)](scanners/energy-grid/) | v1.0.0 — CLI parameterized | PowerShell + Bash |
 | Building Automation (BAS) | [BAS Guardian](scanners/bas/) | v2.0.0 — interactive, vendor CVEs | PowerShell + Bash |
-| Rail & Transit | [Rail-OT-Protector (ROP)](scanners/rail/) | v1.0.0 — CLI, JSON/CSV reports | PowerShell + Bash |
+| Rail & Transit | [Rail-OT-Protector (ROP)](scanners/rail/) | v1.0.0 — CLI, JSON reports | PowerShell + Bash |
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
@@ -34,7 +34,22 @@ All scanners share a defensive posture: **TCP port reachability checks only** �
 
 ## Quick Start
 
-Pick the scanner that matches your sector:
+### Unified launcher (all sectors)
+
+```powershell
+# PowerShell
+.\scripts\ics-ot-protector.ps1 -Sector water
+.\scripts\ics-ot-protector.ps1 -Sector energy-grid -Subnet 192.168.10.0/24
+```
+
+```bash
+# Bash
+./scripts/ics-ot-protector.sh water
+./scripts/ics-ot-protector.sh energy-grid -s 192.168.10.0/24
+```
+
+Pick a sector scanner directly:
+
 
 ### Water & Wastewater — WUP WUP
 ```powershell
@@ -71,6 +86,8 @@ pwsh ./scanners/rail/powershell/ROP.ps1 -Subnets 10.10.20.0/24
 ```
 
 > **Backward compatibility:** The water scanner's legacy paths (`scripts/powershell/WUP-WUP.ps1` and `scripts/bash/WUP-WUP.sh`) still work and redirect to the canonical location.
+
+All scanners export findings as **JSON** (`schema_version` 1.0) with sector metadata and a normalized findings array.
 
 ---
 

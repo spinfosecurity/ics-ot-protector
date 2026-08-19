@@ -161,7 +161,7 @@ Describe 'Generate-Report' {
         if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
     }
 
-    It 'creates a report file and returns its path' {
+    It 'creates a JSON report file and returns its path' {
         $startTime = Get-Date
         $endTime   = $startTime.AddSeconds(10)
         $findings  = @(
@@ -178,9 +178,10 @@ Describe 'Generate-Report' {
                                       -StartTime $startTime -EndTime $endTime
         $reportPath | Should -Not -BeNullOrEmpty
         Test-Path $reportPath | Should -BeTrue
+        $reportPath | Should -Match '\.json$'
     }
 
-    It 'report contains critical finding IP and port' {
+    It 'report contains critical finding host and port' {
         $startTime = Get-Date
         $endTime   = $startTime.AddSeconds(5)
         $findings  = @(
@@ -195,12 +196,13 @@ Describe 'Generate-Report' {
                                       -Findings $findings -TotalScanned 254 `
                                       -CriticalCount 1 -HighCount 0 `
                                       -StartTime $startTime -EndTime $endTime
-        $content = Get-Content $reportPath -Raw
-        $content | Should -Match '10\.0\.0\.42'
-        $content | Should -Match '5900'
+        $json = Get-Content $reportPath -Raw | ConvertFrom-Json
+        $json.schema_version | Should -Be '1.0'
+        $json.findings[0].Host | Should -Be '10.0.0.42'
+        $json.findings[0].Port | Should -Be 5900
     }
 
-    It 'generates a clean-scan report with no findings' {
+    It 'generates a clean-scan JSON report with no findings' {
         $startTime = Get-Date
         $endTime   = $startTime.AddSeconds(3)
         $reportPath = Generate-Report -Subnets @('172.16.0.0/24') -Timeout 2 `
@@ -209,8 +211,8 @@ Describe 'Generate-Report' {
                                       -StartTime $startTime -EndTime $endTime
         $reportPath | Should -Not -BeNullOrEmpty
         Test-Path $reportPath | Should -BeTrue
-        $content = Get-Content $reportPath -Raw
-        $content | Should -Match 'No critical findings'
-        $content | Should -Match 'No high-priority findings'
+        $json = Get-Content $reportPath -Raw | ConvertFrom-Json
+        @($json.findings).Count | Should -Be 0
+        $json.metadata.sector | Should -Be 'water'
     }
 }

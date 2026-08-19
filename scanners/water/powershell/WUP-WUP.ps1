@@ -14,7 +14,7 @@
     ✓ Identifies EtherNet/IP (44818, 2222), Modbus (502), S7 (102) exposure
     ✓ Prioritizes findings by severity (CRITICAL vs HIGH)
     ✓ Provides CISA-aligned remediation guidance
-    ✓ Generates simple text report (optional)
+    ✓ Generates JSON scan report (optional)
     
     WHAT THIS DOES NOT DO:
     ✗ Does NOT test credentials or attempt authentication
@@ -50,6 +50,7 @@
 # ============================================================================
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
 Initialize-WaterConfig -Config (Import-SectorConfig -Sector 'water')
 
 # ============================================================================
@@ -138,7 +139,7 @@ What This Does:
   ✓ Identifies EtherNet/IP (44818, 2222), Modbus (502), S7 (102) exposure
   ✓ Prioritizes findings by severity (CRITICAL vs HIGH)
   ✓ Provides CISA-aligned remediation guidance
-  ✓ Generates simple text report (optional)
+  ✓ Generates JSON scan report (optional)
 
 What This Does NOT Do:
   ✗ Does NOT test credentials or attempt authentication
@@ -263,10 +264,10 @@ function Ask-ExportReport {
     Clear-Host
     Show-Header "Step 3: Export Options"
     
-    Write-Host "Would you like to save a scan report to a text file?" -ForegroundColor White
+    Write-Host "Would you like to save a JSON scan report?" -ForegroundColor White
     Write-Host "`n" -NoNewline
     Write-Host "  • Report includes all findings with timestamps" -ForegroundColor DarkGray
-    Write-Host "  • Easy to share with IT team or management" -ForegroundColor DarkGray
+    Write-Host "  • Standard JSON format shared across all sector scanners" -ForegroundColor DarkGray
     Write-Host "  • Saved to: ~/WaterUtilitySecurity/Reports/" -ForegroundColor DarkGray
     Write-Host "`n" -NoNewline
     
@@ -321,119 +322,27 @@ function Generate-Report {
         [datetime]$StartTime,
         [datetime]$EndTime
     )
-    
+
     try {
-        # Use a cross-platform path: ~/WaterUtilitySecurity/Reports on all OSes
         $reportDir = Join-Path ([System.Environment]::GetFolderPath('UserProfile')) "WaterUtilitySecurity\Reports"
         if (!(Test-Path $reportDir)) {
             New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
         }
-        
-        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-        $reportFile = Join-Path $reportDir "WUPWUP_Report_$timestamp.txt"
-        
-        $report = @"
-================================================================================
-                    WUP WUP - WATER UTILITY PROTECTOR
-                    Security Scan Report
-================================================================================
 
-Report Generated: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-Script Version: $($ScriptInfo.Version)
-Reference: $($ScriptInfo.Reference)
-
-================================================================================
-SCAN CONFIGURATION
-================================================================================
-
-Subnets Scanned:
-"@
-        
-        foreach ($subnet in $subnets) {
-            $report += "`n  • $subnet"
+        $result = Export-ScanReport -Findings $Findings -OutputDir $reportDir -Prefix 'WUP-results' -Metadata @{
+            sector          = 'water'
+            scanner         = 'WUP WUP'
+            version         = $ScriptInfo.Version
+            reference       = $ScriptInfo.Reference
+            subnets         = ($Subnets -join ',')
+            timeout_seconds = $Timeout
+            total_scanned   = $TotalScanned
+            critical_count  = $CriticalCount
+            high_count      = $HighCount
+            duration_seconds = [math]::Round(($EndTime - $StartTime).TotalSeconds, 1)
         }
-        
-        $report += @"
 
-Timeout: $Timeout seconds per IP
-Total IPs Scanned: $TotalScanned
-Scan Duration: $([math]::Round(($EndTime - $StartTime).TotalSeconds, 1)) seconds
-
-================================================================================
-FINDINGS SUMMARY
-================================================================================
-
-Total Findings: $($Findings.Count)
-  • Critical: $CriticalCount
-  • High: $HighCount
-
-================================================================================
-CRITICAL FINDINGS (Immediate Action Required)
-================================================================================
-"@
-        
-        $criticalFindings = $Findings | Where-Object { $_.Severity -eq 'CRITICAL' }
-        if ($criticalFindings.Count -gt 0) {
-            foreach ($finding in $criticalFindings) {
-                $report += @"
-
-[$($finding.IP):$($finding.Port)] - $($finding.Service)
-  Type: $($finding.ThreatType)
-  Context: $($finding.ThreatContext)
-  Action: $($finding.Action)
-"@
-            }
-        } else {
-            $report += "`n  No critical findings."
-        }
-        
-        $report += @"
-
-================================================================================
-HIGH-PRIORITY FINDINGS
-================================================================================
-"@
-        
-        $highFindings = $Findings | Where-Object { $_.Severity -eq 'HIGH' }
-        if ($highFindings.Count -gt 0) {
-            foreach ($finding in $highFindings) {
-                $report += @"
-
-[$($finding.IP):$($finding.Port)] - $($finding.Service)
-  Type: $($finding.ThreatType)
-  Context: $($finding.ThreatContext)
-  Action: $($finding.Action)
-"@
-            }
-        } else {
-            $report += "`n  No high-priority findings."
-        }
-        
-        $report += @"
-
-================================================================================
-RECOMMENDED ACTIONS
-================================================================================
-
-1. Disconnect CRITICAL devices from internet IMMEDIATELY
-2. Implement VPN for all remote access (RDP/VNC/SSH)
-3. Change ALL default passwords on PLCs/HMIs
-4. Restrict OT protocols to engineering VLAN only
-5. Check for cellular modem exposure (CISA blind spot)
-6. Document findings and report to CISA if compromised
-
-Reference: CISA Alert AA26-097A (2026-07-30)
-Report Incident: https://www.cisa.gov/report-cyber-incident
-CISA Scanning: https://www.cisa.gov/cyber-hygiene-services
-
-================================================================================
-                            END OF REPORT
-================================================================================
-"@
-        
-        $report | Out-File -FilePath $reportFile -Encoding UTF8
-        return $reportFile
-        
+        return $result.ReportPath
     } catch {
         Write-Host "  [!] Failed to generate report: $_" -ForegroundColor Red
         return $null

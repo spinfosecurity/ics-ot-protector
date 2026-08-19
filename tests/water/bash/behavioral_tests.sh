@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+command -v jq >/dev/null 2>&1 || { echo "jq is required for behavioral tests" >&2; exit 1; }
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 SCRIPT="${ROOT}/scanners/water/bash/WUP-WUP.sh"
 
@@ -175,14 +177,14 @@ assert_not_empty "generate_report returns a path" "$report_path"
 if [[ -f "$report_path" ]]; then
     pass "Report file exists at returned path"
     content=$(cat "$report_path")
-    assert_contains "Report contains critical IP"      "$content" "192.168.1.10"
-    assert_contains "Report contains critical port"    "$content" "3389"
-    assert_contains "Report contains high IP"          "$content" "192.168.1.20"
-    assert_contains "Report contains high port"        "$content" "502"
-    assert_contains "Report contains ThreatContext"    "$content" "RDP test ctx"
-    assert_contains "Report contains HIGH context"     "$content" "Modbus test ctx"
-    assert_contains "Report contains CISA reference"   "$content" "CISA"
-    assert_contains "Report contains subnet"           "$content" "192.168.1.0/24"
+    assert_contains "Report uses shared JSON schema"     "$content" '"schema_version"'
+    assert_contains "Report contains critical IP"          "$content" "192.168.1.10"
+    assert_contains "Report contains critical port"        "$content" "3389"
+    assert_contains "Report contains high IP"            "$content" "192.168.1.20"
+    assert_contains "Report contains high port"            "$content" "502"
+    assert_contains "Report contains threat context"     "$content" "RDP test ctx"
+    assert_contains "Report contains HIGH context"         "$content" "Modbus test ctx"
+    assert_contains "Report includes water sector metadata" "$content" '"sector": "water"'
 else
     fail "Report file does not exist"
 fi
@@ -198,8 +200,8 @@ assert_not_empty "generate_report returns a path for clean scan" "$clean_report_
 if [[ -f "$clean_report_path" ]]; then
     pass "Clean-scan report file exists"
     clean_content=$(cat "$clean_report_path")
-    assert_contains "Clean report says no critical findings" "$clean_content" "No critical findings"
-    assert_contains "Clean report says no high findings"     "$clean_content" "No high-priority findings"
+    assert_contains "Clean report uses shared JSON schema" "$clean_content" '"schema_version"'
+    assert_contains "Clean report has empty findings array" "$clean_content" '"findings": []'
 else
     fail "Clean-scan report file does not exist"
 fi

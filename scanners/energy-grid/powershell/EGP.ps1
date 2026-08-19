@@ -9,7 +9,7 @@
       - Remote-access protocol exposure (RDP, VNC, SSH, Telnet, FTP, HTTP/HTTPS)
       - ICS protocol exposure (DNP3, Modbus, IEC 60870-5-104, IEC 61850, EtherNet/IP)
     Produces severity-tagged (CRITICAL/HIGH/MEDIUM) console output and a timestamped
-    report saved to the reports/ directory.
+    JSON report saved to the reports/ directory.
 
     Reference: CISA Alert AA26-097A | FBI PSA 2026-08-01
     Use only on networks you own or have explicit written authorization to scan.
@@ -66,8 +66,13 @@ param (
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+$SharedRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $SharedRoot '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path $SharedRoot '_shared' 'ScannerHelpers.ps1')
+. (Join-Path $SharedRoot '_shared' 'Export-ScanReport.ps1')
 Initialize-EnergyGridConfig -Config (Import-SectorConfig -Sector 'energy-grid')
+
+$script:ScanFindings = [System.Collections.Generic.List[pscustomobject]]::new()
 
 # ---------------------------------------------------------------------------
 # Banner
@@ -82,18 +87,6 @@ function Show-Banner {
     Write-Host "  USE ONLY ON NETWORKS YOU ARE AUTHORIZED TO SCAN" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host ""
-}
-
-# ---------------------------------------------------------------------------
-# Severity color helper
-# ---------------------------------------------------------------------------
-function Get-SeverityColor([string]$Severity) {
-    switch ($Severity) {
-        'CRITICAL' { return 'Red' }
-        'HIGH'     { return 'DarkRed' }
-        'MEDIUM'   { return 'Yellow' }
-        default    { return 'Gray' }
-    }
 }
 
 # ---------------------------------------------------------------------------
@@ -125,29 +118,10 @@ function Test-TcpPort {
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Parse /24 subnet into list of host IPs
-# ---------------------------------------------------------------------------
-function Get-SubnetHosts([string]$CidrSubnet) {
-    $baseIp = $CidrSubnet -replace '/24$', ''
-    $octets = $baseIp -split '\.'
-    if ($octets.Count -ne 4) {
-        throw "Invalid subnet format: $CidrSubnet"
-    }
-    foreach ($o in $octets) {
-        if ([int]$o -lt 0 -or [int]$o -gt 255) {
-            throw "Octet out of range in subnet: $CidrSubnet"
-        }
-    }
-    $prefix = "$($octets[0]).$($octets[1]).$($octets[2])"
-    return (1..254) | ForEach-Object { "$prefix.$_" }
-}
-
-# ---------------------------------------------------------------------------
 # Write finding to report and console
 # ---------------------------------------------------------------------------
 function Write-Finding {
     param (
-        [string]$ReportPath,
         [string]$IpAddress,
         [int]$Port,
         [string]$FindingLabel,
@@ -155,16 +129,29 @@ function Write-Finding {
         [string]$Description,
         [string]$Remediation
     )
-    $timestamp = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-    $line = "[$timestamp] [$Severity] $IpAddress`:$Port - $FindingLabel | $Description | REMEDIATION: $Remediation"
+    $timestamp = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+    $category = if ($FindingLabel -match '^CVE-') { 'CVE' }
+                elseif ($FindingLabel -match '^REMOTE-ACCESS:') { 'RemoteAccess' }
+                elseif ($FindingLabel -match '^ICS-PROTOCOL:') { 'ICS' }
+                else { 'General' }
+
+    $script:ScanFindings.Add([pscustomobject]@{
+        Timestamp   = $timestamp
+        Host        = $IpAddress
+        Port        = $Port
+        Service     = $FindingLabel
+        Severity    = $Severity
+        Category    = $category
+        Description = $Description
+        Remediation = $Remediation
+    })
+
     $color = Get-SeverityColor $Severity
 
     Write-Host "  [$Severity] " -ForegroundColor $color -NoNewline
     Write-Host "$IpAddress`:$Port" -ForegroundColor White -NoNewline
     Write-Host " - $FindingLabel" -ForegroundColor $color
     Write-Host "    $Description" -ForegroundColor Gray
-
-    Add-Content -Path $ReportPath -Value $line
 }
 
 # ---------------------------------------------------------------------------
@@ -184,26 +171,12 @@ if (-not (Test-Path $OutputDir)) {
     }
 }
 
-$timestamp   = Get-Date -Format 'yyyyMMdd_HHmmss'
-$reportFile  = Join-Path $OutputDir "EGP_Report_${timestamp}.txt"
 $modeLabel   = if ($CveOnly) { 'CVE-ONLY (fast-scan)' } else { 'FULL SCAN' }
-
-# Initialize report file
-@"
-Energy Grid Protector (EGP) v1.0.0
-Scan Mode    : $modeLabel
-Target Subnet: $Subnet
-Timeout      : ${TimeoutMs}ms
-Scan Started : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-Reference    : CISA Alert AA26-097A | FBI PSA 2026-08-01
-Repository   : https://github.com/spinfosecurity/ics-ot-protector
-=======================================================================
-"@ | Set-Content -Path $reportFile
 
 Write-Host "[*] Mode       : $modeLabel" -ForegroundColor Cyan
 Write-Host "[*] Target     : $Subnet" -ForegroundColor Cyan
 Write-Host "[*] Timeout    : ${TimeoutMs}ms per port" -ForegroundColor Cyan
-Write-Host "[*] Report     : $reportFile" -ForegroundColor Cyan
+Write-Host "[*] Output Dir : $OutputDir" -ForegroundColor Cyan
 Write-Host ""
 
 try {
@@ -229,7 +202,7 @@ foreach ($ip in $hosts) {
         $cve = $CveChecks[$cveId]
         foreach ($port in $cve.Ports) {
             if (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs) {
-                Write-Finding -ReportPath $reportFile `
+                Write-Finding `
                     -IpAddress $ip -Port $port `
                     -FindingLabel $cveId `
                     -Severity $cve.Severity `
@@ -245,7 +218,7 @@ foreach ($ip in $hosts) {
         foreach ($port in $RemoteAccessPorts.Keys) {
             if (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs) {
                 $ra = $RemoteAccessPorts[$port]
-                Write-Finding -ReportPath $reportFile `
+                Write-Finding `
                     -IpAddress $ip -Port $port `
                     -FindingLabel "REMOTE-ACCESS:$($ra.Name)" `
                     -Severity $ra.Severity `
@@ -259,7 +232,7 @@ foreach ($ip in $hosts) {
         foreach ($port in $IcsPorts.Keys) {
             if (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs) {
                 $ics = $IcsPorts[$port]
-                Write-Finding -ReportPath $reportFile `
+                Write-Finding `
                     -IpAddress $ip -Port $port `
                     -FindingLabel "ICS-PROTOCOL:$($ics.Name)" `
                     -Severity $ics.Severity `
@@ -273,32 +246,23 @@ foreach ($ip in $hosts) {
 
 Write-Progress -Activity "EGP Scanning $Subnet" -Completed
 
-# Summary
-$summary = @"
-
-=======================================================================
-SCAN COMPLETE
-Hosts Scanned : $hostsScanned
-Findings      : $findings
-Scan Ended    : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-Report Saved  : $reportFile
-
-REMEDIATION RESOURCES:
-  CISA Alert AA26-097A  : https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-097a
-  FBI PSA 2026-08-01    : https://www.fbi.gov/
-  CISA ICS Advisories   : https://www.cisa.gov/news-events/ics-advisories
-  Report Vulnerabilities: https://www.cisa.gov/report
-=======================================================================
-"@
-
-$summary | Add-Content -Path $reportFile
+$exportPaths = Export-ScanReport -Findings @($script:ScanFindings) -OutputDir $OutputDir -Prefix 'EGP-results' `
+    -Metadata @{
+        sector     = 'energy-grid'
+        scanner    = 'Energy Grid Protector'
+        version    = '1.0.0'
+        scan_mode  = $modeLabel
+        target     = $Subnet
+        timeout_ms = $TimeoutMs
+        reference  = 'CISA Alert AA26-097A | FBI PSA 2026-08-01'
+    }
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  SCAN COMPLETE" -ForegroundColor Green
 Write-Host "  Hosts Scanned : $hostsScanned" -ForegroundColor White
 Write-Host "  Findings      : $findings" -ForegroundColor $(if ($findings -gt 0) { 'Red' } else { 'Green' })
-Write-Host "  Report Saved  : $reportFile" -ForegroundColor White
+Write-Host "  Report Saved  : $($exportPaths.ReportPath)" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 if ($findings -gt 0) {

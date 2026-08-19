@@ -28,10 +28,12 @@ jobs:
         run: |
           pip install pyyaml -q
           bash tests/shared/bash/validate_configs.sh
+          git diff --exit-code -- config/sectors/*.json
       - name: Run monorepo Bash tests
         shell: bash
         run: |
           bash tests/shared/bash/config_behavioral_tests.sh
+          bash tests/shared/bash/launcher_tests.sh
           bash tests/shared/bash/repository_tests.sh
           bash tests/water/bash/repository_tests.sh
           bash tests/water/bash/behavioral_tests.sh

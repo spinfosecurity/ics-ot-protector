@@ -9,7 +9,7 @@ desktop.ini
 *.log
 logs/
 reports/*.txt
-reports/*.csv
+reports/*.json
 reports/*.json
 reports/*.html
 tmp/

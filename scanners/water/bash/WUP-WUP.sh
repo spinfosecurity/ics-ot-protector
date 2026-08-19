@@ -14,7 +14,7 @@
 #   ✓ Identifies EtherNet/IP (44818, 2222), Modbus (502), S7 (102) exposure
 #   ✓ Prioritizes findings by severity (CRITICAL vs HIGH)
 #   ✓ Provides CISA-aligned remediation guidance
-#   ✓ Generates simple text report (optional)
+#   ✓ Generates JSON scan report (optional)
 #   ✓ Parallel per-host scanning (up to 50 concurrent workers)
 #
 # WHAT THIS DOES NOT DO:
@@ -39,6 +39,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/export_scan_report.sh
+source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_water_config
 
 # ---------------------------------------------------------------------------- #
@@ -113,7 +115,7 @@ show_intro() {
     cl "$GRAY"  "  ✓ Identifies EtherNet/IP (44818, 2222), Modbus (502), S7 (102) exposure"
     cl "$GRAY"  "  ✓ Prioritizes findings by severity (CRITICAL vs HIGH)"
     cl "$GRAY"  "  ✓ Provides CISA-aligned remediation guidance"
-    cl "$GRAY"  "  ✓ Generates simple text report (optional)"
+    cl "$GRAY"  "  ✓ Generates JSON scan report (optional)"
     echo ""
     cl "$WHITE" "What This Does NOT Do:"
     cl "$GRAY"  "  ✗ Does NOT test credentials or attempt authentication"
@@ -273,10 +275,10 @@ ask_export_report() {
     clear
     show_header "Step 3: Export Options"
 
-    cl "$WHITE" "Would you like to save a scan report to a text file?"
+    cl "$WHITE" "Would you like to save a JSON scan report?"
     echo ""
     cl "$GRAY"  "  • Report includes all findings with timestamps"
-    cl "$GRAY"  "  • Easy to share with IT team or management"
+    cl "$GRAY"  "  • Standard JSON format shared across all sector scanners"
     cl "$GRAY"  "  • Saved to: ~/WaterUtilitySecurity/Reports/"
     echo ""
 
@@ -326,98 +328,28 @@ generate_report() {
     local report_dir="${HOME}/WaterUtilitySecurity/Reports"
     mkdir -p "$report_dir" 2>/dev/null || true
 
-    local timestamp
-    timestamp=$(date '+%Y%m%d_%H%M%S')
-    local report_file="${report_dir}/WUPWUP_Report_${timestamp}.txt"
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "generate_report requires jq" >&2
+        return 1
+    fi
 
-    {
-        echo "================================================================================"
-        echo "                    WUP WUP - WATER UTILITY PROTECTOR"
-        echo "                    Security Scan Report"
-        echo "================================================================================"
-        echo ""
-        echo "Report Generated: $(date '+%Y-%m-%d %H:%M:%S')"
-        echo "Script Version: ${SCRIPT_VERSION}"
-        echo "Reference: ${SCRIPT_REFERENCE}"
-        echo ""
-        echo "================================================================================"
-        echo "SCAN CONFIGURATION"
-        echo "================================================================================"
-        echo ""
-        echo "Subnets Scanned:"
-        for subnet in "${SUBNETS[@]}"; do
-            echo "  • $subnet"
-        done
-        echo ""
-        echo "Timeout: ${TIMEOUT} seconds per IP"
-        echo "Total IPs Scanned: ${TOTAL_SCANNED}"
-        echo "Scan Duration: ${SCAN_DURATION} seconds"
-        echo ""
-        echo "================================================================================"
-        echo "FINDINGS SUMMARY"
-        echo "================================================================================"
-        echo ""
-        echo "Total Findings: ${#FINDINGS_ALL[@]}"
-        echo "  • Critical: ${CRITICAL_COUNT}"
-        echo "  • High: ${HIGH_COUNT}"
-        echo ""
-        echo "================================================================================"
-        echo "CRITICAL FINDINGS (Immediate Action Required)"
-        echo "================================================================================"
-        if [[ "${CRITICAL_COUNT}" -gt 0 ]]; then
-            for entry in "${FINDINGS_ALL[@]}"; do
-                IFS='|' read -r sev ip port service threat_type threat_ctx action <<< "$entry"
-                [[ "$sev" == "CRITICAL" ]] || continue
-                echo ""
-                echo "[${ip}:${port}] - ${service}"
-                echo "  Type: ${threat_type}"
-                echo "  Context: ${threat_ctx}"
-                echo "  Action: ${action}"
-            done
-        else
-            echo ""
-            echo "  No critical findings."
-        fi
-        echo ""
-        echo "================================================================================"
-        echo "HIGH-PRIORITY FINDINGS"
-        echo "================================================================================"
-        if [[ "${HIGH_COUNT}" -gt 0 ]]; then
-            for entry in "${FINDINGS_ALL[@]}"; do
-                IFS='|' read -r sev ip port service threat_type threat_ctx action <<< "$entry"
-                [[ "$sev" == "HIGH" ]] || continue
-                echo ""
-                echo "[${ip}:${port}] - ${service}"
-                echo "  Type: ${threat_type}"
-                echo "  Context: ${threat_ctx}"
-                echo "  Action: ${action}"
-            done
-        else
-            echo ""
-            echo "  No high-priority findings."
-        fi
-        echo ""
-        echo "================================================================================"
-        echo "RECOMMENDED ACTIONS"
-        echo "================================================================================"
-        echo ""
-        echo "1. Disconnect CRITICAL devices from internet IMMEDIATELY"
-        echo "2. Implement VPN for all remote access (RDP/VNC/SSH)"
-        echo "3. Change ALL default passwords on PLCs/HMIs"
-        echo "4. Restrict OT protocols to engineering VLAN only"
-        echo "5. Check for cellular modem exposure (CISA blind spot)"
-        echo "6. Document findings and report to CISA if compromised"
-        echo ""
-        echo "Reference: CISA Alert AA26-097A (2026-07-30)"
-        echo "Report Incident: https://www.cisa.gov/report-cyber-incident"
-        echo "CISA Scanning: https://www.cisa.gov/cyber-hygiene-services"
-        echo ""
-        echo "================================================================================"
-        echo "                            END OF REPORT"
-        echo "================================================================================"
-    } > "$report_file"
+    local findings_json='[]'
+    for entry in "${FINDINGS_ALL[@]}"; do
+        IFS='|' read -r sev ip port service threat_type threat_ctx action <<< "$entry"
+        findings_json=$(jq -n \
+            --argjson arr "$findings_json" \
+            --arg ts "$(date '+%Y-%m-%dT%H:%M:%S')" \
+            --arg host "$ip" \
+            --argjson port "$port" \
+            --arg service "$service" \
+            --arg severity "$sev" \
+            --arg category "$threat_type" \
+            --arg description "$threat_ctx" \
+            --arg remediation "$action" \
+            '$arr + [{Timestamp:$ts, Host:$host, Port:$port, Service:$service, Severity:$severity, Category:$category, Description:$description, Remediation:$remediation}]')
+    done
 
-    echo "$report_file"
+    export_scan_report_write "$report_dir" "WUP-results" "water" "WUP WUP" "$findings_json"
 }
 
 # Scan all ports on one IP; write pipe-delimited findings to out_file.
