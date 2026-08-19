@@ -1,6 +1,6 @@
 # Test Suite
 
-These tests validate repository integrity and scanner logic without interacting with a network or an OT asset.
+These tests validate repository integrity and scanner logic without interacting with a network or an OT asset. They are part of the [ICS OT Protector](../../README.md) monorepo — see the root README **Engineering highlights** section for the full quality story.
 
 ## Layout
 

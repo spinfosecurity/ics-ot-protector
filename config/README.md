@@ -1,6 +1,6 @@
 # Sector Scanner Configuration
 
-Sector-specific port tables, threat intelligence, and CVE definitions live here as **YAML** (human-editable source) and **JSON** (runtime format for scanners).
+Sector-specific port tables, threat intelligence, and CVE definitions live here as **YAML** (human-editable source) and **JSON** (runtime format for scanners). CI recompiles YAML and fails on drift — part of the shared config pipeline in the [ICS OT Protector](../../README.md) monorepo.
 
 ## Layout
 
