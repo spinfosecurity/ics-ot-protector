@@ -1,0 +1,20 @@
+{
+  "community": "public",
+  "port": 161,
+  "printers": [
+    {
+      "host": "192.168.1.100",
+      "name": "Reception HP LaserJet"
+    },
+    {
+      "host": "192.168.1.101",
+      "name": "IT Room Xerox",
+      "community": "private"
+    },
+    {
+      "host": "192.168.1.102",
+      "name": "Finance Floor Canon",
+      "port": 161
+    }
+  ]
+}
