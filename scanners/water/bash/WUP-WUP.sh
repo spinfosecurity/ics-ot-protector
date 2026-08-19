@@ -451,6 +451,35 @@ generate_report() {
     echo "$report_file"
 }
 
+# Scan all ports on one IP; write pipe-delimited findings to out_file.
+scan_host() {
+    local ip="$1" timeout_sec="$2" out_file="$3"
+    for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
+        IFS='|' read -r port service severity <<< "$entry"
+        if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
+            local token
+            token=$(echo "$service" | grep -oE '^[A-Za-z0-9/]+')
+            local ctx
+            ctx=$(get_threat_context "$token")
+            if [[ "$severity" == "CRITICAL" ]]; then
+                echo "CRITICAL|${ip}|${port}|${service}|Remote Access - Immediate Threat|${ctx}|BLOCK IMMEDIATELY or restrict to VPN only" >> "$out_file"
+            else
+                echo "HIGH|${ip}|${port}|${service}|Web HMI Exposure|${ctx}|Restrict to engineering VLAN; implement MFA" >> "$out_file"
+            fi
+        fi
+    done
+    for entry in "${OT_PROTOCOL_PORTS[@]}"; do
+        IFS='|' read -r port protocol <<< "$entry"
+        if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
+            local token
+            token=$(echo "$protocol" | grep -oE '^[A-Za-z0-9/]+')
+            local ctx
+            ctx=$(get_threat_context "$token")
+            echo "HIGH|${ip}|${port}|${protocol}|OT Protocol Exposure|${ctx}|Remove from internet; implement firewall rules" >> "$out_file"
+        fi
+    done
+}
+
 # ---------------------------------------------------------------------------- #
 # Main
 # ---------------------------------------------------------------------------- #
@@ -487,34 +516,6 @@ main() {
     tmp_dir=$(mktemp -d)
     trap 'rm -rf "$tmp_dir"' EXIT
 
-    # Worker function: scan all ports on one IP, write findings to a temp file
-    scan_host() {
-        local ip="$1" timeout_sec="$2" out_file="$3"
-        for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
-            IFS='|' read -r port service severity <<< "$entry"
-            if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
-                local token
-                token=$(echo "$service" | grep -oE '^[A-Za-z0-9/]+')
-                local ctx
-                ctx=$(get_threat_context "$token")
-                if [[ "$severity" == "CRITICAL" ]]; then
-                    echo "CRITICAL|${ip}|${port}|${service}|Remote Access - Immediate Threat|${ctx}|BLOCK IMMEDIATELY or restrict to VPN only" >> "$out_file"
-                else
-                    echo "HIGH|${ip}|${port}|${service}|Web HMI Exposure|${ctx}|Restrict to engineering VLAN; implement MFA" >> "$out_file"
-                fi
-            fi
-        done
-        for entry in "${OT_PROTOCOL_PORTS[@]}"; do
-            IFS='|' read -r port protocol <<< "$entry"
-            if (timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null); then
-                local token
-                token=$(echo "$protocol" | grep -oE '^[A-Za-z0-9/]+')
-                local ctx
-                ctx=$(get_threat_context "$token")
-                echo "HIGH|${ip}|${port}|${protocol}|OT Protocol Exposure|${ctx}|Remove from internet; implement firewall rules" >> "$out_file"
-            fi
-        done
-    }
     export -f scan_host get_threat_context
     export REMOTE_ACCESS_PORTS OT_PROTOCOL_PORTS
 
