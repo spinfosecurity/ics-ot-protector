@@ -10,4 +10,7 @@ source "${ROOT}/scanners/_shared/scanner_helpers.sh"
 hosts=$(get_subnet_hosts '192.168.1.0/24' | wc -l)
 [[ "$hosts" -eq 254 ]] || { echo "get_subnet_hosts expected 254 hosts, got $hosts" >&2; exit 1; }
 
+command -v timeout >/dev/null 2>&1 || { echo "timeout command required for test_tcp_port" >&2; exit 1; }
+type test_tcp_port >/dev/null 2>&1 || { echo "test_tcp_port not defined" >&2; exit 1; }
+
 printf 'Shared scanner helper tests passed.\n'

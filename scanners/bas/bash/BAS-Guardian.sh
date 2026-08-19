@@ -23,17 +23,7 @@ DARK_GRAY='\033[0;90m'
 NC='\033[0m'
 
 test_port() {
-    local ip=$1
-    local port=$2
-    local timeout=$3
-    (exec 3<>"/dev/tcp/$ip/$port") 2>/dev/null &
-    local pid=$!
-    ( sleep "$timeout" && kill -9 $pid 2>/dev/null ) &
-    local watcher=$!
-    wait $pid 2>/dev/null
-    local result=$?
-    kill -9 $watcher 2>/dev/null
-    return $result
+    test_tcp_port "$1" "$2" "$3"
 }
 
 show_intro() {

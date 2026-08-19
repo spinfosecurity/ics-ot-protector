@@ -14,3 +14,11 @@ get_subnet_hosts() {
     echo "${prefix}.${i}"
   done
 }
+
+# Returns 0 if TCP connect succeeds within timeout_sec (default 1).
+test_tcp_port() {
+  local ip="$1"
+  local port="$2"
+  local timeout_sec="${3:-1}"
+  timeout "$timeout_sec" bash -c "exec 3<>/dev/tcp/${ip}/${port}" 2>/dev/null
+}
