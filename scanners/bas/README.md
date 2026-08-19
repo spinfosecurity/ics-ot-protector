@@ -1,8 +1,18 @@
 # BAS Guardian
 
-Sector-specific scanner for **Building Automation Systems (BAS)**, BACnet devices, and HVAC/BMS controllers. Detects CVE-2026-3611 (CVSS 10.0), CVE-2026-24060, and exposed Tridium/Honeywell/Johnson Controls/Siemens systems.
+Sector-specific scanner for **Building Automation Systems (BAS)**, BACnet devices, and HVAC/BMS controllers. Part of the [ICS OT Protector monorepo](../../README.md).
 
 ## Quick Start
+
+```bash
+./scripts/ics-ot-protector.sh bas
+```
+
+```powershell
+.\scripts\ics-ot-protector.ps1 -Sector bas
+```
+
+Or run directly:
 
 ### PowerShell
 ```powershell
@@ -33,4 +43,4 @@ Sector-specific scanner for **Building Automation Systems (BAS)**, BACnet device
 
 ## Version
 
-Current: **2.0.0** (interactive wizard with vendor-specific CVE intelligence)
+Current: **2.0.0** — interactive wizard, vendor CVE intelligence, JSON reports (`BAS-results-*.json`)

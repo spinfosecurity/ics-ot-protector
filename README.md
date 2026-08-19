@@ -17,8 +17,8 @@ Previously distributed as four separate repositories, all scanners now live here
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 [![CISA Aligned](https://img.shields.io/badge/CISA-ICS%20Advisories%20Aligned-red)](#)
 [![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen.svg)]()
-[![GitHub issues](https://img.shields.io/github/issues/spinfosecurity/ics-ot-protector)](https://github.com/spinfosecurity/ics-ot-protector/issues)
-[![GitHub stars](https://img.shields.io/github/stars/spinfosecurity/ics-ot-protector?style=social)](https://github.com/spinfosecurity/ics-ot-protector/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/spinfosecurity/water-utility-protector)](https://github.com/spinfosecurity/water-utility-protector/issues)
+[![GitHub stars](https://img.shields.io/github/stars/spinfosecurity/water-utility-protector?style=social)](https://github.com/spinfosecurity/water-utility-protector/stargazers)
 
 ---
 
@@ -29,6 +29,25 @@ Critical infrastructure operators across water, energy, building automation, and
 All scanners share a defensive posture: **TCP port reachability checks only** — no credential testing, no exploit payloads, no configuration changes.
 
 **Keywords:** ICS security scanner, OT vulnerability scanner, SCADA exposure assessment, critical infrastructure protection, CISA AA26-097A, PowerShell ICS scanner, Bash SCADA scanner, water utility cybersecurity, power grid OT security, BACnet scanner, rail OT security
+
+**Portfolio:** [spinfosecurity.github.io](https://spinfosecurity.github.io/) · **Latest release:** [v4.1.1](https://github.com/spinfosecurity/water-utility-protector/releases/tag/v4.1.1)
+
+---
+
+## Engineering highlights
+
+This repo is structured the way a security engineering team would maintain internal assessment tooling:
+
+| Area | What you can review in this repo |
+|------|----------------------------------|
+| **Architecture** | Monorepo with four sector scanners, shared modules (`scanners/_shared/`), unified launcher |
+| **Configuration** | YAML sector configs compiled to JSON; CI fails on config drift |
+| **Quality** | 80+ automated tests (Pester + Bash), GitHub Actions on every push |
+| **Reporting** | Standard JSON export (`schema_version` 1.0) for tickets and downstream tools |
+| **Safety** | Shared threat model, safe-operation guides, authorized-use disclaimers |
+| **Platforms** | PowerShell 5.1+ and Bash 4.0+ — Windows, Linux, macOS |
+
+Defensive scope only: TCP reachability checks. No credentials, exploits, or configuration changes.
 
 ---
 
@@ -131,7 +150,7 @@ ics-ot-protector/
 │   ├── energy-grid/
 │   ├── bas/
 │   └── rail/
-├── scripts/                # Backward-compat launchers (water only)
+├── scripts/                # Unified launcher + water legacy paths
 ├── reports/
 └── README.md
 ```
@@ -170,7 +189,7 @@ A: No. All scanners use standard TCP connections. No raw sockets or elevated pri
 A: No. Port scanning can trigger SCADA alarms and PLC watchdog resets. Always coordinate with your operations team and get written authorization before scanning any production OT network.
 
 **Q: Are the old separate repos still maintained?**  
-A: No. `Energy-Grid-Protector`, `BAS-Guardian`, and `Rail-OT-Protector` are being archived in favor of this monorepo at [`spinfosecurity/ics-ot-protector`](https://github.com/spinfosecurity/ics-ot-protector). See [Repository Migration Guide](docs/repository-migration.md) for archive instructions.
+A: No. Legacy standalone repos are being consolidated here. Active development is in [`spinfosecurity/water-utility-protector`](https://github.com/spinfosecurity/water-utility-protector) (planned rename to `ics-ot-protector`). See [Repository Migration Guide](docs/repository-migration.md).
 
 **Q: Is it free?**  
 A: Yes — MIT License, free for all use including commercial and government.
@@ -197,4 +216,4 @@ These tools are for **defensive security assessment by authorized personnel only
 
 ---
 
-Made by [@spinfosecurity](https://github.com/spinfosecurity)
+Made by [@spinfosecurity](https://github.com/spinfosecurity) · [Portfolio](https://spinfosecurity.github.io/)

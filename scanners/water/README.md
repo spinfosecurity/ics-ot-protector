@@ -1,8 +1,20 @@
 # Water Utility Protector (WUP WUP)
 
-Sector-specific OT/SCADA scanner for **water and wastewater utilities**. Detects internet-exposed PLCs, HMIs, and remote access aligned with CISA Alert AA26-097A.
+Sector-specific OT/SCADA scanner for **water and wastewater utilities**. Part of the [ICS OT Protector monorepo](../../README.md). Detects internet-exposed PLCs, HMIs, and remote access aligned with CISA Alert AA26-097A.
 
 ## Quick Start
+
+From the repo root:
+
+```bash
+./scripts/ics-ot-protector.sh water
+```
+
+```powershell
+.\scripts\ics-ot-protector.ps1 -Sector water
+```
+
+Or run this sector directly:
 
 ### PowerShell (Windows / cross-platform)
 ```powershell
@@ -42,4 +54,4 @@ Legacy path (backward compatible):
 
 ## Version
 
-Current: **3.4.0** (most mature scanner in the portfolio — interactive wizard, parallel scanning, behavioral test suite)
+Current: **3.4.0** — interactive wizard, parallel scanning, JSON reports (`WUP-results-*.json`), behavioral test suite

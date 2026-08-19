@@ -1,8 +1,18 @@
 # Energy Grid Protector (EGP)
 
-Sector-specific OT/SCADA scanner for **power grid, transmission, and substation networks**. Detects ICS protocol exposure, vendor CVEs (Hitachi Energy, ABB, B&R), and remote-access risks aligned with NERC CIP and CISA ICS advisories.
+Sector-specific OT/SCADA scanner for **power grid, transmission, and substation networks**. Part of the [ICS OT Protector monorepo](../../README.md).
 
 ## Quick Start
+
+```bash
+./scripts/ics-ot-protector.sh energy-grid -s 192.168.10.0/24
+```
+
+```powershell
+.\scripts\ics-ot-protector.ps1 -Sector energy-grid -Subnet 192.168.10.0/24
+```
+
+Or run directly:
 
 ### PowerShell
 ```powershell
@@ -35,4 +45,4 @@ Fast CVE-only mode:
 
 ## Version
 
-Current: **1.0.0** (CLI-driven, parameterized subnet input)
+Current: **1.0.0** — CLI-driven, JSON reports (`EGP-results-*.json`), CVE fast-scan mode

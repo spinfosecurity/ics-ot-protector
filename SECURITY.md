@@ -15,7 +15,7 @@ ICS OT Protector is a **scanning/detection tool portfolio**, not a versioned ser
 
 If you discover a security flaw in this tool itself (e.g., unsafe file writes, path traversal in output handling, or unsafe subprocess execution), please report it privately:
 
-1. Open a [GitHub private security advisory](https://github.com/spinfosecurity/ics-ot-protector/security/advisories/new)
+1. Open a [GitHub private security advisory](https://github.com/spinfosecurity/water-utility-protector/security/advisories/new)
 2. **Include:** Description of the issue, reproduction steps, and potential impact
 3. **Response time:** We aim to acknowledge reports within 72 hours and resolve confirmed issues within 14 days
 

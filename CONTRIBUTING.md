@@ -25,8 +25,8 @@ When changing scanner logic, update the corresponding sector under `scanners/<se
 ## Development Setup
 
 ```bash
-git clone https://github.com/spinfosecurity/ics-ot-protector.git
-cd ics-ot-protector
+git clone https://github.com/spinfosecurity/water-utility-protector.git
+cd water-utility-protector
 
 # Run tests
 bash tests/shared/bash/repository_tests.sh
