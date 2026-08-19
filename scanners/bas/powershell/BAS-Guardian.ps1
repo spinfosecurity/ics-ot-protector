@@ -3,6 +3,7 @@
 # =============================================================================
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
 Initialize-BasConfig -Config (Import-SectorConfig -Sector 'bas')
 
@@ -67,12 +68,6 @@ function Test-Port {
     } catch {
         return $false
     }
-}
-
-function Get-NetworkPrefix {
-    param($Subnet)
-    $baseIP = $Subnet.Split('/')[0]
-    return ($baseIP.Split('.')[0..2] -join '.')
 }
 
 function Ask-Subnets {

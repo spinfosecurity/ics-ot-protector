@@ -18,7 +18,10 @@ function Get-SeverityColor {
 }
 
 function Get-NetworkPrefix {
-    param([string]$Cidr)
+    param(
+        [Alias('Subnet')]
+        [string]$Cidr
+    )
     return ($Cidr -split '/')[0] -replace '\.\d+$', ''
 }
 

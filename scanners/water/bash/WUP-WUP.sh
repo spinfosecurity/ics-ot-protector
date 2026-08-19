@@ -39,6 +39,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/scanner_helpers.sh
+source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_water_config
@@ -422,7 +424,7 @@ main() {
 
     for subnet in "${SUBNETS[@]}"; do
         local network_prefix
-        network_prefix=$(echo "$subnet" | awk -F'[./]' '{print $1"."$2"."$3}')
+        network_prefix=$(get_network_prefix "$subnet")
         local subnet_start_epoch
         subnet_start_epoch=$(date +%s)
         local subnet_tmp="${tmp_dir}/${subnet//\//_}"

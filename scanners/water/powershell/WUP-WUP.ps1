@@ -50,6 +50,7 @@
 # ============================================================================
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
 Initialize-WaterConfig -Config (Import-SectorConfig -Sector 'water')
 
@@ -98,14 +99,6 @@ function Test-Port {
     }
     
     return $result
-}
-
-function Get-NetworkPrefix {
-    param([string]$Subnet)
-    
-    $baseIP = ($subnet -split '/')[0]
-    $octets = $baseIP -split '\.'
-    return "$($octets[0]).$($octets[1]).$($octets[2])"
 }
 
 function Show-Intro {

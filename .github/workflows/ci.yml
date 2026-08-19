@@ -33,6 +33,7 @@ jobs:
         shell: bash
         run: |
           bash tests/shared/bash/config_behavioral_tests.sh
+          bash tests/shared/bash/scanner_helpers_tests.sh
           bash tests/shared/bash/launcher_tests.sh
           bash tests/shared/bash/repository_tests.sh
           bash tests/water/bash/repository_tests.sh
