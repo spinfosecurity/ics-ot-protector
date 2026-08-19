@@ -43,7 +43,7 @@
     Author  : spinfosecurity
     Version : 1.0.0
     License : MIT
-    Project : https://github.com/spinfosecurity/Energy-Grid-Protector
+    Project : https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/energy-grid
 #>
 
 [CmdletBinding()]
@@ -74,7 +74,7 @@ function Show-Banner {
     Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host "  Energy Grid Protector (EGP) v1.0.0" -ForegroundColor Cyan
     Write-Host "  OT/SCADA Cybersecurity Scanner - Power Grid Edition" -ForegroundColor Cyan
-    Write-Host "  github.com/spinfosecurity/Energy-Grid-Protector" -ForegroundColor Cyan
+    Write-Host "  github.com/spinfosecurity/ics-ot-protector" -ForegroundColor Cyan
     Write-Host "  Ref: CISA AA26-097A | FBI PSA 2026-08-01" -ForegroundColor DarkCyan
     Write-Host "  USE ONLY ON NETWORKS YOU ARE AUTHORIZED TO SCAN" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Cyan
@@ -243,7 +243,7 @@ Target Subnet: $Subnet
 Timeout      : ${TimeoutMs}ms
 Scan Started : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 Reference    : CISA Alert AA26-097A | FBI PSA 2026-08-01
-Repository   : https://github.com/spinfosecurity/Energy-Grid-Protector
+Repository   : https://github.com/spinfosecurity/ics-ot-protector
 =======================================================================
 "@ | Set-Content -Path $reportFile
 

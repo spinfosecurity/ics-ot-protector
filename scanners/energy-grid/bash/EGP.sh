@@ -4,7 +4,7 @@
 # OT/SCADA Cybersecurity Scanner - Power Grid Edition
 # Author  : spinfosecurity
 # License : MIT
-# Project : https://github.com/spinfosecurity/Energy-Grid-Protector
+# Project : https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/energy-grid
 # Ref     : CISA Alert AA26-097A | FBI PSA 2026-08-01
 #
 # USAGE:
@@ -198,7 +198,7 @@ show_banner() {
     echo "============================================================"
     echo "  Energy Grid Protector (EGP) v1.0.0"
     echo "  OT/SCADA Cybersecurity Scanner - Power Grid Edition"
-    echo "  github.com/spinfosecurity/Energy-Grid-Protector"
+    echo "  github.com/spinfosecurity/ics-ot-protector"
     echo -e "  Ref: CISA AA26-097A | FBI PSA 2026-08-01${NC}"
     echo -e "${YELLOW}  USE ONLY ON NETWORKS YOU ARE AUTHORIZED TO SCAN${NC}"
     echo -e "${CYAN}============================================================${NC}"
@@ -232,7 +232,7 @@ Target Subnet: $SUBNET
 Timeout      : ${TIMEOUT}s
 Scan Started : $(date '+%Y-%m-%d %H:%M:%S')
 Reference    : CISA Alert AA26-097A | FBI PSA 2026-08-01
-Repository   : https://github.com/spinfosecurity/Energy-Grid-Protector
+Repository   : https://github.com/spinfosecurity/ics-ot-protector
 =======================================================================
 EOF
 

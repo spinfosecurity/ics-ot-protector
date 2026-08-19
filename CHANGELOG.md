@@ -18,6 +18,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 ### Removed
 - **Printer SNMP consumables tooling** — unrelated to ICS/OT scanning; removed from the repository
 
+### Added
+- **Repository migration tooling** — archive notice READMEs (`docs/archive-notices/`), admin script (`scripts/admin/archive-legacy-repos.sh`), and [migration guide](docs/repository-migration.md) for archiving legacy standalone repos and renaming to `ics-ot-protector`
+
+### Changed
+- **Canonical repository branding** updated to `spinfosecurity/ics-ot-protector` across README, SECURITY.md, CONTRIBUTING.md, and EGP scanner output
+
 ### Changed
 - Repository restructured from single-scanner layout to multi-sector monorepo
 - CI updated to lint and test all four sector scanners

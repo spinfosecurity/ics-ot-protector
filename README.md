@@ -17,6 +17,8 @@ Previously distributed as four separate repositories, all scanners now live here
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 [![CISA Aligned](https://img.shields.io/badge/CISA-ICS%20Advisories%20Aligned-red)](#)
 [![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen.svg)]()
+[![GitHub issues](https://img.shields.io/github/issues/spinfosecurity/ics-ot-protector)](https://github.com/spinfosecurity/ics-ot-protector/issues)
+[![GitHub stars](https://img.shields.io/github/stars/spinfosecurity/ics-ot-protector?style=social)](https://github.com/spinfosecurity/ics-ot-protector/stargazers)
 
 ---
 
@@ -124,6 +126,7 @@ ics-ot-protector/
 - [Safe Operation Guide](docs/safe-operation.md)
 - [Threat Model](docs/threat-model.md)
 - [Sample Report Format](docs/sample-report.md)
+- [Repository Migration Guide](docs/repository-migration.md)
 - [Security Policy](SECURITY.md)
 - [Contributing Guide](CONTRIBUTING.md)
 
@@ -149,7 +152,7 @@ A: No. All scanners use standard TCP connections. No raw sockets or elevated pri
 A: No. Port scanning can trigger SCADA alarms and PLC watchdog resets. Always coordinate with your operations team and get written authorization before scanning any production OT network.
 
 **Q: Are the old separate repos still maintained?**  
-A: Development is consolidated here. The former repos (Energy-Grid-Protector, BAS-Guardian, Rail-OT-Protector) should be considered archived in favor of this monorepo.
+A: No. `Energy-Grid-Protector`, `BAS-Guardian`, and `Rail-OT-Protector` are being archived in favor of this monorepo at [`spinfosecurity/ics-ot-protector`](https://github.com/spinfosecurity/ics-ot-protector). See [Repository Migration Guide](docs/repository-migration.md) for archive instructions.
 
 **Q: Is it free?**  
 A: Yes — MIT License, free for all use including commercial and government.
