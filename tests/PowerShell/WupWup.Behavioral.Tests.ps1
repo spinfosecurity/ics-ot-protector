@@ -1,21 +1,17 @@
-$Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$ScriptPath = Join-Path $Root 'scripts' 'powershell' 'WUP-WUP.ps1'
+# Load the script's functions and configuration without triggering
+# the interactive main-execution block.
+# $WUP_TEST_MODE causes the script to return early, before the try{} session.
+$WUP_TEST_MODE = $true
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'scripts' 'powershell' 'WUP-WUP.ps1')
 
-# Dot-source only the configuration/function blocks without triggering the
-# interactive main execution block (which is wrapped in try{} at file root).
-# We extract and invoke the non-interactive parts via AST.
-$tokens = $null
-$errors = $null
-$ast = [System.Management.Automation.Language.Parser]::ParseFile(
-    $ScriptPath, [ref]$tokens, [ref]$errors)
+Describe 'Script meta' {
+    It 'ScriptInfo.Version is populated' {
+        $ScriptInfo.Version | Should -Not -BeNullOrEmpty
+    }
 
-# Execute configuration assignments and helper function definitions by
-# running everything except the top-level try{} main block.
-$nonMainStatements = $ast.EndBlock.Statements | Where-Object {
-    -not ($_ -is [System.Management.Automation.Language.TryStatementAst])
-}
-foreach ($stmt in $nonMainStatements) {
-    Invoke-Expression $stmt.Extent.Text
+    It 'ScriptInfo.Reference mentions CISA' {
+        $ScriptInfo.Reference | Should -Match 'CISA'
+    }
 }
 
 Describe 'ThreatContext table' {
@@ -101,20 +97,20 @@ Describe 'Get-NetworkPrefix' {
 }
 
 Describe 'ThreatContext service token extraction' {
-    It 'extracts RDP from "RDP (Remote Desktop) - #1 attack vector"' {
+    It 'extracts RDP correctly' {
         $service = $RemoteAccessPorts[3389]
         $token = ($service -split '[\s(/]')[0]
         $ThreatContext.ContainsKey($token) | Should -BeTrue
     }
 
-    It 'extracts HTTP from "HTTP (Web HMI)"' {
+    It 'extracts HTTP from Web HMI label' {
         $service = $RemoteAccessPorts[80]
         $token = ($service -split '[\s(/]')[0]
         $token | Should -Be 'HTTP'
         $ThreatContext.ContainsKey($token) | Should -BeTrue
     }
 
-    It 'extracts HTTPS from "HTTPS (Web HMI)"' {
+    It 'extracts HTTPS from Web HMI label' {
         $service = $RemoteAccessPorts[443]
         $token = ($service -split '[\s(/]')[0]
         $token | Should -Be 'HTTPS'
@@ -130,12 +126,11 @@ Describe 'ThreatContext service token extraction' {
 }
 
 Describe 'Show-ScanHeader box width' {
-    It 'does not overflow for a normal subnet' {
-        # If padding calculation would go negative, PowerShell throws — just verify no error
+    It 'does not throw for a normal subnet' {
         { Show-ScanHeader -Subnet '192.168.10.0/24' -StartTime (Get-Date) } | Should -Not -Throw
     }
 
-    It 'does not overflow for an unusually long subnet string' {
+    It 'does not throw for a long subnet string' {
         { Show-ScanHeader -Subnet '255.255.255.255/24' -StartTime (Get-Date) } | Should -Not -Throw
     }
 }
@@ -151,13 +146,9 @@ Describe 'Show-ScanComplete box padding' {
 }
 
 Describe 'Generate-Report' {
-    BeforeAll {
-        $testReportDir = Join-Path $env:TEMP 'WupWupTestReports'
-        if (Test-Path $testReportDir) { Remove-Item $testReportDir -Recurse -Force }
-    }
-
     AfterAll {
-        if (Test-Path $testReportDir) { Remove-Item $testReportDir -Recurse -Force }
+        $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) 'WupWupTestReports'
+        if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
     }
 
     It 'creates a report file and returns its path' {
@@ -179,7 +170,7 @@ Describe 'Generate-Report' {
         Test-Path $reportPath | Should -BeTrue
     }
 
-    It 'report file contains critical finding IP and port' {
+    It 'report contains critical finding IP and port' {
         $startTime = Get-Date
         $endTime   = $startTime.AddSeconds(5)
         $findings  = @(
@@ -211,15 +202,5 @@ Describe 'Generate-Report' {
         $content = Get-Content $reportPath -Raw
         $content | Should -Match 'No critical findings'
         $content | Should -Match 'No high-priority findings'
-    }
-}
-
-Describe 'ScriptInfo' {
-    It 'version is a non-empty string' {
-        $ScriptInfo.Version | Should -Not -BeNullOrEmpty
-    }
-
-    It 'reference mentions CISA' {
-        $ScriptInfo.Reference | Should -Match 'CISA'
     }
 }

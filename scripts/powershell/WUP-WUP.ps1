@@ -131,7 +131,7 @@ function Test-Port {
                 }
                 $tcpClient.Dispose()
             } catch {
-                # Ignore cleanup errors
+                Write-Verbose "TcpClient cleanup error: $($_.Exception.Message)"
             }
         }
     }
@@ -548,7 +548,11 @@ function Show-ScanComplete {
 
 # ============================================================================
 # MAIN EXECUTION
+# Set $WUP_TEST_MODE = $true before dot-sourcing this file to load functions
+# and configuration without triggering the interactive session.
 # ============================================================================
+
+if ($WUP_TEST_MODE) { return }
 
 try {
     Show-Intro
@@ -587,10 +591,21 @@ try {
                 $tcpClient = New-Object System.Net.Sockets.TcpClient
                 $ar = $tcpClient.BeginConnect($IP, $port, $null, $null)
                 if ($ar.AsyncWaitHandle.WaitOne($Timeout * 1000)) {
-                    try { $tcpClient.EndConnect($ar); $open = $tcpClient.Connected } catch {}
+                    try {
+                        $tcpClient.EndConnect($ar)
+                        $open = $tcpClient.Connected
+                    } catch {
+                        Write-Verbose "EndConnect failed for ${IP}:${port} - $($_.Exception.Message)"
+                    }
                 }
-            } catch {} finally {
-                if ($tcpClient) { try { $tcpClient.Dispose() } catch {} }
+            } catch {
+                Write-Verbose "Connect failed for ${IP}:${port} - $($_.Exception.Message)"
+            } finally {
+                if ($tcpClient) {
+                    try { $tcpClient.Dispose() } catch {
+                        Write-Verbose "Dispose failed for ${IP}:${port}"
+                    }
+                }
             }
             
             if ($open) {
@@ -617,10 +632,21 @@ try {
                 $tcpClient = New-Object System.Net.Sockets.TcpClient
                 $ar = $tcpClient.BeginConnect($IP, $port, $null, $null)
                 if ($ar.AsyncWaitHandle.WaitOne($Timeout * 1000)) {
-                    try { $tcpClient.EndConnect($ar); $open = $tcpClient.Connected } catch {}
+                    try {
+                        $tcpClient.EndConnect($ar)
+                        $open = $tcpClient.Connected
+                    } catch {
+                        Write-Verbose "EndConnect failed for ${IP}:${port} - $($_.Exception.Message)"
+                    }
                 }
-            } catch {} finally {
-                if ($tcpClient) { try { $tcpClient.Dispose() } catch {} }
+            } catch {
+                Write-Verbose "Connect failed for ${IP}:${port} - $($_.Exception.Message)"
+            } finally {
+                if ($tcpClient) {
+                    try { $tcpClient.Dispose() } catch {
+                        Write-Verbose "Dispose failed for ${IP}:${port}"
+                    }
+                }
             }
             
             if ($open) {
