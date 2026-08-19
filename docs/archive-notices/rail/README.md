@@ -1,0 +1,42 @@
+# ⚠️ Repository Archived
+
+This repository has been **archived** and is no longer maintained.
+
+All development continues in the unified **ICS OT Protector** monorepo:
+
+**https://github.com/spinfosecurity/ics-ot-protector**
+
+## Where to find this scanner
+
+| Former repo | New location |
+|-------------|--------------|
+| Energy-Grid-Protector | [`scanners/energy-grid/`](https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/energy-grid) |
+| BAS-Guardian | [`scanners/bas/`](https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/bas) |
+| Rail-OT-Protector | [`scanners/rail/`](https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/rail) |
+| water-utility-protector | [`scanners/water/`](https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/water) |
+
+## Quick start (Rail-OT-Protector)
+
+```powershell
+# PowerShell
+git clone https://github.com/spinfosecurity/ics-ot-protector.git
+cd ics-ot-protector
+pwsh ./scanners/rail/powershell/ROP.ps1 -Subnets 10.10.20.0/24
+```
+
+```bash
+# Bash
+git clone https://github.com/spinfosecurity/ics-ot-protector.git
+cd ics-ot-protector
+./scanners/rail/bash/ROP.sh 10.10.20.0/24
+```
+
+## Issues and contributions
+
+Please open issues and pull requests on the monorepo:
+
+**https://github.com/spinfosecurity/ics-ot-protector/issues**
+
+---
+
+*Archived by [spinfosecurity](https://github.com/spinfosecurity). GitHub automatically redirects this repository URL until the rename is complete.*

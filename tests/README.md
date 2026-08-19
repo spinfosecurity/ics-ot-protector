@@ -1,19 +1,35 @@
-# Tests
+# Test Suite
 
-These tests validate repository integrity without interacting with a network or an OT asset.
+These tests validate repository integrity and scanner logic without interacting with a network or an OT asset.
 
-- `PowerShell/Repository.Tests.ps1` parses PowerShell source and validates required project documentation.
-- `bash/repository_tests.sh` runs Bash syntax checks and validates required project documentation.
+## Layout
 
-The test suite does **not** dot-source or execute scanner scripts. It performs no port checks, HTTP requests, authentication attempts, device commands, or other network activity.
+```
+tests/
+├── shared/          # Monorepo-wide validation (all sectors present, all scripts parse)
+├── water/           # WUP WUP behavioral + repository tests
+├── energy-grid/     # EGP repository tests
+├── bas/             # BAS Guardian repository tests
+└── rail/            # ROP repository tests
+```
 
-## Run locally
+## Running Tests
 
+### PowerShell (Pester)
 ```powershell
-Install-Module Pester -Scope CurrentUser
-Invoke-Pester ./tests/PowerShell -Output Detailed
+Invoke-Pester ./tests/shared/PowerShell ./tests/water/PowerShell ./tests/energy-grid/PowerShell ./tests/bas/PowerShell ./tests/rail/PowerShell -CI
 ```
 
+### Bash
 ```bash
-bash ./tests/bash/repository_tests.sh
+bash tests/shared/bash/repository_tests.sh
+bash tests/water/bash/repository_tests.sh
+bash tests/water/bash/behavioral_tests.sh
+bash tests/energy-grid/bash/repository_tests.sh
+bash tests/bas/bash/repository_tests.sh
+bash tests/rail/bash/repository_tests.sh
 ```
+
+## Safety
+
+The test suite does **not** execute live network scans. It performs no port checks, HTTP requests, authentication attempts, device commands, or other network activity. Behavioral tests source scanner functions in test mode or use mock listeners on localhost where needed.

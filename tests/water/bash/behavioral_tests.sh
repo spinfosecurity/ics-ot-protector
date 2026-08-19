@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT="${ROOT}/scripts/bash/WUP-WUP.sh"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+SCRIPT="${ROOT}/scanners/water/bash/WUP-WUP.sh"
 
 PASS=0
 FAIL=0

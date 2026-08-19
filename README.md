@@ -1,166 +1,158 @@
-# Water Utility Protector (WUP WUP) - Free Water & Wastewater Cybersecurity Scanner
+# ICS OT Protector — Unified Critical Infrastructure Scanner Portfolio
 
-**WUP WUP (Water Utility Protector)** is a free, open-source cybersecurity scanning tool built to help water and wastewater utilities detect internet-exposed industrial control systems (ICS), SCADA devices, and remote access vulnerabilities before attackers exploit them. Available in both **PowerShell** and **Bash**, WUP WUP implements guidance from CISA Alert AA26-097A and real-world threat intelligence from the July 2026 water sector cyberattacks.
+**ICS OT Protector** is a free, open-source collection of sector-specific OT/SCADA cybersecurity scanners. Each scanner targets the protocols, vendor CVEs, and attack patterns relevant to its critical infrastructure sector — all from a single monorepo with shared governance, CI, and safety documentation.
+
+Previously distributed as four separate repositories, all scanners now live here:
+
+| Sector | Scanner | Status | Platforms |
+|--------|---------|--------|-----------|
+| Water & Wastewater | [WUP WUP](scanners/water/) | v3.4.0 — interactive, parallel scanning | PowerShell + Bash |
+| Power Grid & Substation | [Energy Grid Protector (EGP)](scanners/energy-grid/) | v1.0.0 — CLI parameterized | PowerShell + Bash |
+| Building Automation (BAS) | [BAS Guardian](scanners/bas/) | v2.0.0 — interactive, vendor CVEs | PowerShell + Bash |
+| Rail & Transit | [Rail-OT-Protector (ROP)](scanners/rail/) | v1.0.0 — CLI, JSON/CSV reports | PowerShell + Bash |
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
 [![Bash](https://img.shields.io/badge/Bash-4.0%2B-green.svg)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
-[![CISA AA26-097A](https://img.shields.io/badge/CISA-AA26--097A%20Response-red)](#)
-[![EPA WaterISAC](https://img.shields.io/badge/EPA-Water%20Sector%20Cybersecurity-blue)](#)
+[![CISA Aligned](https://img.shields.io/badge/CISA-ICS%20Advisories%20Aligned-red)](#)
 [![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen.svg)]()
-[![GitHub issues](https://img.shields.io/github/issues/spinfosecurity/water-utility-protector)](https://github.com/spinfosecurity/water-utility-protector/issues)
-[![GitHub stars](https://img.shields.io/github/stars/spinfosecurity/water-utility-protector?style=social)](https://github.com/spinfosecurity/water-utility-protector/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/spinfosecurity/ics-ot-protector)](https://github.com/spinfosecurity/ics-ot-protector/issues)
+[![GitHub stars](https://img.shields.io/github/stars/spinfosecurity/ics-ot-protector?style=social)](https://github.com/spinfosecurity/ics-ot-protector/stargazers)
 
 ---
 
 ## About
 
-Water and wastewater utilities across the United States are facing an escalating wave of cyberattacks targeting exposed programmable logic controllers (PLCs), human-machine interfaces (HMIs), and remote access systems. In July 2026, coordinated attacks disrupted operations at more than 30 water utilities in Minnesota, and CISA Alert AA26-097A (July 30, 2026) confirmed active nation-state exploitation of internet-facing OT infrastructure nationwide.
+Critical infrastructure operators across water, energy, building automation, and rail sectors face escalating cyberattacks targeting exposed PLCs, HMIs, and remote access systems. Each sector scanner in this portfolio implements **sector-specific port coverage, threat intelligence, and remediation guidance** drawn from CISA ICS advisories, FBI PSAs, and vendor CVE databases.
 
-**WUP WUP** was built to give water utility IT teams, OT engineers, and cybersecurity consultants a fast, free way to identify these exact exposures on their own networks — without needing expensive commercial scanning tools or deep penetration testing expertise.
+All scanners share a defensive posture: **TCP port reachability checks only** — no credential testing, no exploit payloads, no configuration changes.
 
-**Keywords:** water utility cybersecurity, ICS security scanner, SCADA vulnerability scanner, OT network security tool, CISA AA26-097A compliance scanner, PowerShell security script, Bash security script, critical infrastructure protection, water treatment cyberattack detection, industrial control systems security, Modbus scanner, EtherNet/IP scanner, PLC security, HMI exposure detection
+**Keywords:** ICS security scanner, OT vulnerability scanner, SCADA exposure assessment, critical infrastructure protection, CISA AA26-097A, PowerShell ICS scanner, Bash SCADA scanner, water utility cybersecurity, power grid OT security, BACnet scanner, rail OT security
 
-## What This Tool Does
-
-- **Scans OT subnets** for exposed PLCs, HMIs, and remote access points
-- **Detects primary attack vectors**: RDP (3389), VNC (5900), SSH (22)
-- **Identifies OT protocol exposure**: EtherNet/IP (44818, 2222), Modbus (502), S7 (102), DNP3 (20000), BACnet/IP (47808)
-- **Prioritizes findings by severity** (CRITICAL vs HIGH) based on real attack data
-- **Provides CISA-aligned remediation guidance** for every finding
-- **Generates simple text reports** for sharing with IT and OT teams
-- **Runs on Windows, Linux, and macOS** via matching PowerShell and Bash implementations
-
-## Real-World Threat Intelligence
-
-This tool is built directly on documented attack patterns from:
-
-- **CISA Alert AA26-097A** (July 30, 2026) — Water sector PLC targeting advisory
-- **FBI PSA 2026-08-01** — Iran-linked threat actors exploiting exposed VNC
-- **CISA/EPA Joint Advisory** — Internet-exposed HMIs in water systems
-- **July 2026 Minnesota Water Sector Attacks** — 30+ utilities disrupted in a single coordinated campaign
-
-## Key Features
-
-### Threat Detection Prioritized by Real Attack Data
-| Port | Protocol | Threat Context |
-|------|----------|-----------------|
-| 3389 | RDP (Remote Desktop) | PRIMARY ATTACK VECTOR — 70% of water sector breaches (CISA 2026) |
-| 5900 / 5901 | VNC | Active exploitation by Iran-linked groups (FBI PSA 2026-08-01) |
-| 22 | SSH | CISA-flagged in July 2026 water sector attacks |
-| 44818 / 2222 | EtherNet/IP (CIP) | Rockwell MicroLogix 1400 targeted (4,148 exposed globally) |
-| 502 | Modbus TCP | Unauthenticated protocol (CVSS 9.3) |
-| 102 | S7 Comm | Siemens SIMATIC S7-1200 (4,117 exposed globally) |
-| 20000 | DNP3 | Water sector SCADA protocol, no built-in encryption |
-
-### Vendor-Specific Exposure Intelligence
-- **Rockwell / Allen-Bradley**: 4,148 exposed hosts globally (71% in the US) — MicroLogix 1400, CompactLogix
-- **Siemens**: 4,117 exposed hosts (86% in Europe) — S7-1200 PLCs
-- **Schneider Electric**: 2,072 exposed hosts — Modicon M241/M251/M258
+---
 
 ## Quick Start
 
-### PowerShell Version (Windows)
+Pick the scanner that matches your sector:
+
+### Water & Wastewater — WUP WUP
 ```powershell
-.\scripts\powershell\WUP-WUP.ps1
+# PowerShell (interactive wizard)
+.\scanners\water\powershell\WUP-WUP.ps1
 ```
-
-### Bash Version (Linux/macOS)
 ```bash
-chmod +x scripts/bash/WUP-WUP.sh
-./scripts/bash/WUP-WUP.sh
+# Bash (interactive wizard)
+./scanners/water/bash/WUP-WUP.sh
 ```
 
-Both versions deliver identical scanning logic, threat intelligence, color-coded output, and report export — choose whichever matches your operating system.
+### Power Grid & Substation — EGP
+```powershell
+.\scanners\energy-grid\powershell\EGP.ps1 -Subnet 192.168.10.0/24
+```
+```bash
+./scanners/energy-grid/bash/EGP.sh 192.168.10.0/24
+```
 
-## What This Does NOT Do
+### Building Automation — BAS Guardian
+```powershell
+.\scanners\bas\powershell\BAS-Guardian.ps1
+```
+```bash
+./scanners/bas/bash/BAS-Guardian.sh
+```
 
-- ❌ Does NOT test credentials or attempt authentication
-- ❌ Does NOT modify system configurations
-- ❌ Does NOT scan IT networks (OT/SCADA focus only)
-- ❌ Does NOT replace professional penetration testing
-- ❌ Does NOT detect active malware or intrusions
-- ❌ Does NOT work over IPv6 (IPv4 only)
-- ❌ Does NOT scan non-/24 subnets
+### Rail & Transit — ROP
+```powershell
+pwsh ./scanners/rail/powershell/ROP.ps1 -Subnets 10.10.20.0/24
+```
+```bash
+./scanners/rail/bash/ROP.sh 10.10.20.0/24
+```
+
+> **Backward compatibility:** The water scanner's legacy paths (`scripts/powershell/WUP-WUP.ps1` and `scripts/bash/WUP-WUP.sh`) still work and redirect to the canonical location.
+
+---
+
+## What All Scanners Do
+
+- Scan OT subnets for internet-exposed PLCs, HMIs, and remote access points
+- Detect primary attack vectors: RDP (3389), VNC (5900), SSH (22)
+- Identify sector-specific OT protocol exposure
+- Prioritize findings by severity (CRITICAL / HIGH / MEDIUM)
+- Provide CISA-aligned remediation guidance
+- Generate reports for sharing with IT and OT teams
+
+## What They Do NOT Do
+
+- ❌ Do NOT test credentials or attempt authentication
+- ❌ Do NOT modify system configurations
+- ❌ Do NOT replace professional penetration testing
+- ❌ Do NOT detect active malware or intrusions
+- ❌ Do NOT work over IPv6 (IPv4 only)
+
+---
 
 ## Repository Structure
 
 ```
-water-utility-protector/
-├── scripts/
-│   ├── powershell/
-│   │   ├── WUP-WUP.ps1
-│   │   └── README.md
-│   └── bash/
-│       ├── WUP-WUP.sh
-│       └── README.md
+ics-ot-protector/
+├── scanners/
+│   ├── water/              # WUP WUP — water & wastewater
+│   ├── energy-grid/        # EGP — power grid & substation
+│   ├── bas/                # BAS Guardian — building automation
+│   └── rail/               # ROP — rail & transit
 ├── docs/
-│   ├── CISA-Reference.md
-│   └── Threat-Intelligence.md
+│   ├── sectors/            # Sector-specific threat intel & reports
+│   ├── safe-operation.md   # Shared authorized-use procedures
+│   ├── threat-model.md     # Shared scope & limitations
+│   └── sample-report.md    # Shared report format reference
+├── tests/
+│   ├── shared/             # Monorepo-wide validation
+│   ├── water/              # WUP WUP behavioral + repo tests
+│   ├── energy-grid/
+│   ├── bas/
+│   └── rail/
+├── scripts/                # Backward-compat launchers (water only)
 ├── reports/
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-└── SECURITY.md
+└── README.md
 ```
+
+---
 
 ## Documentation
 
-- **[PowerShell Guide](scripts/powershell/README.md)** — Windows implementation details
-- **[Bash Guide](scripts/bash/README.md)** — Linux/macOS implementation details
-- **[CISA Reference](docs/CISA-Reference.md)** — Official CISA guidance and reporting contacts
-- **[Threat Intelligence](docs/Threat-Intelligence.md)** — Detailed attack pattern analysis
-- **[Security Policy](./SECURITY.md)** — Responsible disclosure
+### Shared
+- [Safe Operation Guide](docs/safe-operation.md)
+- [Threat Model](docs/threat-model.md)
+- [Sample Report Format](docs/sample-report.md)
+- [Repository Migration Guide](docs/repository-migration.md)
+- [Security Policy](SECURITY.md)
+- [Contributing Guide](CONTRIBUTING.md)
 
-## Technical Specifications
-
-### Supported Platforms
-| Platform | Script | Requirements |
-|----------|--------|---------------|
-| Windows | PowerShell (`WUP-WUP.ps1`) | PowerShell 5.1+, .NET Framework 4.7+ |
-| Linux | Bash (`WUP-WUP.sh`) | Bash 4.0+, `bc`, `timeout`, standard utilities |
-| macOS | Bash (`WUP-WUP.sh`) | Bash 4.0+, `bc`, `timeout` (via `coreutils`), standard utilities |
-
-### Limitations
-- TCP port scan only (no UDP, no banner grabbing)
-- Parallel per-host scanning (up to 50 concurrent workers); actual speed depends on network latency and timeout setting
-- May produce false negatives behind aggressive firewalls
-- Requires local network access to the OT subnet being scanned
-
-## Sample Output
-
-```
-[!!! CRITICAL !!!] 192.168.10.78:5900 - VNC (Virtual Network Computing)
-    Active exploitation by Iran-linked groups (FBI PSA 2026-08-01)
-    Action: BLOCK IMMEDIATELY or restrict to VPN only
-
-[!! HIGH !!] 192.168.10.102:44818 - EtherNet/IP (CIP)
-    Rockwell MicroLogix 1400 targeted (4,148 exposed globally)
-    Action: Restrict to engineering VLAN; implement MFA
-```
+### Sector-Specific
+| Sector | Guide | Threat Intel | CISA Reference |
+|--------|-------|-------------|----------------|
+| Water | [README](scanners/water/README.md) | [Threat-Intelligence](docs/sectors/water/Threat-Intelligence.md) | [CISA-Reference](docs/sectors/water/CISA-Reference.md) |
+| Energy Grid | [README](scanners/energy-grid/README.md) | — | — |
+| BAS | [README](scanners/bas/README.md) | [Threat-Intelligence](docs/sectors/bas/Threat-Intelligence.md) | [CISA-Reference](docs/sectors/bas/CISA-Reference.md) |
+| Rail | [README](scanners/rail/README.md) | [Threat-Intelligence](docs/sectors/rail/Threat-Intelligence.md) | [CISA-Reference](docs/sectors/rail/CISA-Reference.md) |
 
 ---
 
 ## FAQ
 
-**Q: Do I need admin or root privileges to run WUP WUP?**  
-A: No. It uses standard TCP connections. No raw sockets, no elevated privileges needed.
+**Q: Which scanner should I use?**  
+A: Match your sector — water utilities use WUP WUP, power grid operators use EGP, facility managers use BAS Guardian, and rail/transit authorities use ROP. Each scanner has sector-specific port tables and threat intelligence.
 
-**Q: Can I run this without coordinating with operations?**  
-A: No. Port scanning can trigger SCADA alarms and PLC watchdog resets. Always coordinate with your water operations team and get written authorization before scanning any production OT network.
+**Q: Do I need admin or root privileges?**  
+A: No. All scanners use standard TCP connections. No raw sockets or elevated privileges needed.
 
-**Q: Does this tool exploit CVEs or attempt to hack PLCs?**  
-A: No. WUP WUP only checks whether ports are reachable. It never sends exploit payloads, attempts logins, or modifies any device.
+**Q: Can I run these without coordinating with operations?**  
+A: No. Port scanning can trigger SCADA alarms and PLC watchdog resets. Always coordinate with your operations team and get written authorization before scanning any production OT network.
 
-**Q: Can I report results directly to CISA?**  
-A: Yes. If you discover actively exploited internet-facing OT devices, you can report directly via [CISA's reporting portal](https://www.cisa.gov/report). The CISA Reference guide in `docs/` includes reporting steps.
-
-**Q: Is this aligned with CISA's water sector recommendations?**  
-A: Yes. Every detection category maps directly to CISA Alert AA26-097A remediation guidance.
-
-**Q: Can small rural water systems with no IT staff use this?**  
-A: Yes. Both scripts require no installation. Copy to any Windows or Linux machine with network access to the OT subnet and run.
+**Q: Are the old separate repos still maintained?**  
+A: No. `Energy-Grid-Protector`, `BAS-Guardian`, and `Rail-OT-Protector` are being archived in favor of this monorepo at [`spinfosecurity/ics-ot-protector`](https://github.com/spinfosecurity/ics-ot-protector). See [Repository Migration Guide](docs/repository-migration.md) for archive instructions.
 
 **Q: Is it free?**  
 A: Yes — MIT License, free for all use including commercial and government.
@@ -169,55 +161,22 @@ A: Yes — MIT License, free for all use including commercial and government.
 
 ## Who This Is For
 
-- **Water utility IT/OT teams** at municipal, county, and rural water authorities
-- **Wastewater treatment plant operators** needing a fast OT exposure check
-- **State drinking water program coordinators** helping small utilities comply with CISA guidance
-- **CISA/EPA regional advisors** supporting water sector cybersecurity assessments
-- **ICS/OT security consultants** adding water sector capabilities to their service offering
-- **Rural water associations** and state primacy agencies supporting small systems
-
----
-
-## ⭐ Support This Project
-
-If WUP WUP helped your utility find a real exposure, consider:
-
-- ⭐ **Starring this repo** — it helps other water utility security teams find it
-- 🐛 **Opening an issue** if you find a bug or want a new detection added
-- 🤝 **Contributing** — see [CONTRIBUTING.md](./CONTRIBUTING.md)
-- 💬 **Sharing** with your state water association, ISAC, or EPA regional office
-
-> Built by [@spinfosecurity](https://github.com/spinfosecurity) — learning by building free tools that detect and protect critical infrastructure.
+- **Water utility IT/OT teams** — municipal, county, and rural water authorities
+- **Power grid and substation operators** — transmission and distribution utilities
+- **Facility managers and BAS teams** — commercial, healthcare, and data center buildings
+- **Rail and transit authorities** — passenger and freight OT/SCADA networks
+- **CISA/EPA regional advisors** and **ICS/OT security consultants**
 
 ---
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome from the water sector cybersecurity community! Please read the [Contributing Guide](CONTRIBUTING.md) first.
-
-## Issues & Support
-
-- **Bug Reports / Feature Requests**: [Open an issue](https://github.com/spinfosecurity/water-utility-protector/issues)
-- **Security vulnerabilities in this tool**: See [SECURITY.md](./SECURITY.md)
-
-## References
-
-- [CISA Alert AA26-097A](https://www.cisa.gov/news-events/alerts/2026/07/30/cisa-urges-water-and-wastewater-systems-sector-protect-operational)
-- [FBI IC3](https://www.ic3.gov)
-- [EPA Water Sector Cybersecurity](https://www.epa.gov/watercybersecurity)
-- [CISA Cyber Hygiene Services](https://www.cisa.gov/cyber-hygiene-services)
-- [Security Policy](./SECURITY.md)
+MIT License — see [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 
-This tool is for **defensive security assessment by authorized personnel only**. Only scan networks you own or have explicit written permission to test. Unauthorized scanning may violate federal and state laws, including the Computer Fraud and Abuse Act (CFAA).
+These tools are for **defensive security assessment by authorized personnel only**. Only scan networks you own or have explicit written permission to test. Unauthorized scanning may violate federal and state laws, including the Computer Fraud and Abuse Act (CFAA).
 
 ---
 
-**WUP WUP** — Because when your water utility's security matters, you need emergency response, not false alarms.
-
-Made by [spinfosecurity](https://github.com/spinfosecurity)
+Made by [@spinfosecurity](https://github.com/spinfosecurity)

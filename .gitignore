@@ -21,3 +21,4 @@ dist/
 build/
 *.zip
 *.tar.gz
+testResults.xml
