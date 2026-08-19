@@ -59,6 +59,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
 Initialize-RailConfig -Config (Import-SectorConfig -Sector 'rail')
 
 # ---------------------------------------------------------------------------
@@ -78,42 +80,6 @@ function Write-Log {
     $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     $color = switch ($Level) { 'WARN' { 'Yellow' } 'ERROR' { 'Red' } default { 'Cyan' } }
     Write-Host "[$ts] [$Level] $Message" -ForegroundColor $color
-}
-
-# ---------------------------------------------------------------------------
-# CIDR expansion
-# ---------------------------------------------------------------------------
-function ConvertTo-IpRange {
-    param([string]$Cidr)
-
-    if ($Cidr -notmatch '^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)/(3[0-2]|[12]?\d)$') {
-        throw "Invalid CIDR notation: '$Cidr'. Expected format: x.x.x.x/n"
-    }
-
-    $parts  = $Cidr.Split('/')
-    $baseIp = [System.Net.IPAddress]::Parse($parts[0])
-    $prefix = [int]$parts[1]
-
-    if ($prefix -lt 8 -or $prefix -gt 32) {
-        throw "Prefix /$prefix outside safe scan range /8-/32. Please use a narrower subnet."
-    }
-
-    $bytes = $baseIp.GetAddressBytes()
-    [array]::Reverse($bytes)
-    $ipInt = [BitConverter]::ToUInt32($bytes, 0)
-
-    $mask      = if ($prefix -eq 0) { [uint32]0 } else { [uint32]::MaxValue -shl (32 - $prefix) }
-    $network   = $ipInt -band $mask
-    $hostCount = [math]::Pow(2, (32 - $prefix))
-    $broadcast = $network + $hostCount - 1
-
-    $list = New-Object System.Collections.Generic.List[string]
-    for ($cur = $network + 1; $cur -lt $broadcast; $cur++) {
-        $b = [BitConverter]::GetBytes([uint32]$cur)
-        [array]::Reverse($b)
-        $list.Add(([System.Net.IPAddress]::new($b)).ToString())
-    }
-    return , $list
 }
 
 # ---------------------------------------------------------------------------
@@ -244,13 +210,6 @@ $pool.Close(); $pool.Dispose()
 Write-Progress -Activity 'Rail-OT-Protector Scanning' -Completed
 
 # Write reports
-$ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-$jsonPath = Join-Path $OutputDir "ROP-results-$ts.json"
-$csvPath  = Join-Path $OutputDir "ROP-results-$ts.csv"
+$exportPaths = Export-ScanReport -Findings @($script:Findings.ToArray()) -OutputDir $OutputDir -Prefix 'ROP-results'
 
-$ordered = @($script:Findings.ToArray() | Sort-Object @{E={switch($_.Severity){'CRITICAL'{0}'HIGH'{1}'MEDIUM'{2}default{3}}}}, Host, Port)
-
-$ordered | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $jsonPath -Encoding UTF8
-$ordered | Export-Csv  -LiteralPath $csvPath  -NoTypeInformation -Encoding UTF8
-
-Write-Log "Scan complete | Findings: $($ordered.Count) | JSON: $jsonPath | CSV: $csvPath"
+Write-Log "Scan complete | Findings: $($script:Findings.Count) | JSON: $($exportPaths.JsonPath) | CSV: $($exportPaths.CsvPath)"

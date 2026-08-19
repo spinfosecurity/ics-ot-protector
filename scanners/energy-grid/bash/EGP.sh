@@ -30,6 +30,8 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 # shellcheck source=../_shared/load_sector_config.sh
 source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
+# shellcheck source=../_shared/export_scan_report.sh
+source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 initialize_energy_grid_config
 
 # ---------------------------------------------------------------------------
@@ -159,6 +161,16 @@ write_finding() {
 
     echo -e "  ${color}[${severity}]${NC} ${WHITE}${ip}:${port}${NC} - ${color}${label}${NC}"
     echo -e "    ${GRAY}${description}${NC}"
+
+    if [[ -n "${SCAN_REPORT_JSON_TMP:-}" ]]; then
+        local category="General"
+        case "$label" in
+            CVE-*) category="CVE" ;;
+            REMOTE-ACCESS:*) category="RemoteAccess" ;;
+            ICS-PROTOCOL:*) category="ICS" ;;
+        esac
+        export_scan_report_append "$ip" "$port" "$label" "$severity" "$category" "$description" "$remediation"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -194,6 +206,7 @@ mkdir -p "$OUTPUT_DIR" || { echo "[-] Cannot create output directory: $OUTPUT_DI
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 REPORT_FILE="${OUTPUT_DIR}/EGP_Report_${TIMESTAMP}.txt"
 LOCK_FILE="${REPORT_FILE}.lock"
+export_scan_report_init "$OUTPUT_DIR" "EGP-results"
 
 if [[ "$CVE_ONLY" == true ]]; then
     MODE_LABEL="CVE-ONLY (fast-scan)"
@@ -298,6 +311,8 @@ EOF
 echo "$SUMMARY" >> "$REPORT_FILE"
 rm -f "$LOCK_FILE"
 
+IFS='|' read -r JSON_REPORT CSV_REPORT < <(export_scan_report_finalize)
+
 echo -e "${CYAN}============================================================${NC}"
 echo -e "  ${GREEN}SCAN COMPLETE${NC}"
 echo -e "  ${WHITE}Hosts Scanned : ${HOSTS_SCANNED}${NC}"
@@ -307,6 +322,8 @@ else
     echo -e "  ${GREEN}Findings      : ${FINDINGS}${NC}"
 fi
 echo -e "  ${WHITE}Report Saved  : ${REPORT_FILE}${NC}"
+echo -e "  ${WHITE}JSON Report   : ${JSON_REPORT}${NC}"
+echo -e "  ${WHITE}CSV Report    : ${CSV_REPORT}${NC}"
 echo -e "${CYAN}============================================================${NC}"
 echo ""
 if (( FINDINGS > 0 )); then

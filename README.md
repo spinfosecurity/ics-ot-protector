@@ -34,7 +34,22 @@ All scanners share a defensive posture: **TCP port reachability checks only** â€
 
 ## Quick Start
 
-Pick the scanner that matches your sector:
+### Unified launcher (all sectors)
+
+```powershell
+# PowerShell
+.\scripts\ics-ot-protector.ps1 -Sector water
+.\scripts\ics-ot-protector.ps1 -Sector energy-grid -Subnet 192.168.10.0/24
+```
+
+```bash
+# Bash
+./scripts/ics-ot-protector.sh water
+./scripts/ics-ot-protector.sh energy-grid -s 192.168.10.0/24
+```
+
+Pick a sector scanner directly:
+
 
 ### Water & Wastewater â€” WUP WUP
 ```powershell

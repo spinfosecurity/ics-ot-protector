@@ -66,8 +66,13 @@ param (
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
+$SharedRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $SharedRoot '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path $SharedRoot '_shared' 'ScannerHelpers.ps1')
+. (Join-Path $SharedRoot '_shared' 'Export-ScanReport.ps1')
 Initialize-EnergyGridConfig -Config (Import-SectorConfig -Sector 'energy-grid')
+
+$script:ScanFindings = [System.Collections.Generic.List[pscustomobject]]::new()
 
 # ---------------------------------------------------------------------------
 # Banner
@@ -82,18 +87,6 @@ function Show-Banner {
     Write-Host "  USE ONLY ON NETWORKS YOU ARE AUTHORIZED TO SCAN" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host ""
-}
-
-# ---------------------------------------------------------------------------
-# Severity color helper
-# ---------------------------------------------------------------------------
-function Get-SeverityColor([string]$Severity) {
-    switch ($Severity) {
-        'CRITICAL' { return 'Red' }
-        'HIGH'     { return 'DarkRed' }
-        'MEDIUM'   { return 'Yellow' }
-        default    { return 'Gray' }
-    }
 }
 
 # ---------------------------------------------------------------------------
@@ -125,24 +118,6 @@ function Test-TcpPort {
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Parse /24 subnet into list of host IPs
-# ---------------------------------------------------------------------------
-function Get-SubnetHosts([string]$CidrSubnet) {
-    $baseIp = $CidrSubnet -replace '/24$', ''
-    $octets = $baseIp -split '\.'
-    if ($octets.Count -ne 4) {
-        throw "Invalid subnet format: $CidrSubnet"
-    }
-    foreach ($o in $octets) {
-        if ([int]$o -lt 0 -or [int]$o -gt 255) {
-            throw "Octet out of range in subnet: $CidrSubnet"
-        }
-    }
-    $prefix = "$($octets[0]).$($octets[1]).$($octets[2])"
-    return (1..254) | ForEach-Object { "$prefix.$_" }
-}
-
-# ---------------------------------------------------------------------------
 # Write finding to report and console
 # ---------------------------------------------------------------------------
 function Write-Finding {
@@ -155,7 +130,23 @@ function Write-Finding {
         [string]$Description,
         [string]$Remediation
     )
-    $timestamp = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+    $timestamp = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+    $category = if ($FindingLabel -match '^CVE-') { 'CVE' }
+                elseif ($FindingLabel -match '^REMOTE-ACCESS:') { 'RemoteAccess' }
+                elseif ($FindingLabel -match '^ICS-PROTOCOL:') { 'ICS' }
+                else { 'General' }
+
+    $script:ScanFindings.Add([pscustomobject]@{
+        Timestamp   = $timestamp
+        Host        = $IpAddress
+        Port        = $Port
+        Service     = $FindingLabel
+        Severity    = $Severity
+        Category    = $category
+        Description = $Description
+        Remediation = $Remediation
+    })
+
     $line = "[$timestamp] [$Severity] $IpAddress`:$Port - $FindingLabel | $Description | REMEDIATION: $Remediation"
     $color = Get-SeverityColor $Severity
 
@@ -293,12 +284,24 @@ REMEDIATION RESOURCES:
 
 $summary | Add-Content -Path $reportFile
 
+$exportPaths = Export-ScanReport -Findings @($script:ScanFindings) -OutputDir $OutputDir -Prefix 'EGP-results' `
+    -Metadata @{
+        sector      = 'energy-grid'
+        scanner     = 'Energy Grid Protector'
+        scan_mode   = $modeLabel
+        target      = $Subnet
+        timeout_ms  = $TimeoutMs
+        text_report = $reportFile
+    }
+
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  SCAN COMPLETE" -ForegroundColor Green
 Write-Host "  Hosts Scanned : $hostsScanned" -ForegroundColor White
 Write-Host "  Findings      : $findings" -ForegroundColor $(if ($findings -gt 0) { 'Red' } else { 'Green' })
 Write-Host "  Report Saved  : $reportFile" -ForegroundColor White
+Write-Host "  JSON Report   : $($exportPaths.JsonPath)" -ForegroundColor White
+Write-Host "  CSV Report    : $($exportPaths.CsvPath)" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 if ($findings -gt 0) {
