@@ -170,7 +170,7 @@ ics-ot-protector/
 ### Shared
 - [Safe Operation Guide](docs/safe-operation.md)
 - [Threat Model](docs/threat-model.md)
-- [Sample Report Format](docs/sample-report.md) · [Example JSON](docs/sample-report.json)
+- [Sample Report Format](docs/sample-report.md) · [Example JSON](docs/sample-report.json) · [Offline report review](docs/report-review-workflow.md)
 - [Repository Migration Guide](docs/repository-migration.md)
 - [Security Policy](SECURITY.md)
 - [Contributing Guide](CONTRIBUTING.md)

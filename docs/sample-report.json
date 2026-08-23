@@ -16,6 +16,23 @@
         "CRITICAL": 1,
         "HIGH": 2
       },
+      "findings_by_category": {
+        "Remote Access": 1,
+        "OT Protocol Exposure": 2
+      },
+      "findings_by_priority": {
+        "IMMEDIATE": 1,
+        "URGENT": 2
+      },
+      "findings_by_owner_role": {
+        "security": 1,
+        "ot": 2
+      },
+      "top_hosts": [
+        { "host": "192.168.10.78", "findings": 1 },
+        { "host": "192.168.10.102", "findings": 1 },
+        { "host": "192.168.10.113", "findings": 1 }
+      ],
       "duration_ms": 48300
     }
   },
@@ -28,7 +45,10 @@
       "Severity": "CRITICAL",
       "Category": "Remote Access",
       "Description": "VNC exposed — primary ransomware entry vector per CISA AA26-097A",
-      "Remediation": "BLOCK IMMEDIATELY or restrict to VPN only"
+      "Remediation": "BLOCK IMMEDIATELY or restrict to VPN only",
+      "RemediationPriority": "IMMEDIATE",
+      "RemediationAction": "block",
+      "OwnerRole": "security"
     },
     {
       "Timestamp": "2026-08-19T14:29:45",
@@ -38,7 +58,10 @@
       "Severity": "HIGH",
       "Category": "OT Protocol Exposure",
       "Description": "EtherNet/IP exposed — Allen-Bradley PLC/HMI communication port",
-      "Remediation": "Remove from internet; implement firewall rules"
+      "Remediation": "Remove from internet; implement firewall rules",
+      "RemediationPriority": "URGENT",
+      "RemediationAction": "segment",
+      "OwnerRole": "ot"
     },
     {
       "Timestamp": "2026-08-19T14:29:58",
@@ -48,7 +71,10 @@
       "Severity": "HIGH",
       "Category": "OT Protocol Exposure",
       "Description": "Modbus TCP exposed — widely targeted ICS protocol",
-      "Remediation": "Remove from internet; implement firewall rules"
+      "Remediation": "Remove from internet; implement firewall rules",
+      "RemediationPriority": "URGENT",
+      "RemediationAction": "segment",
+      "OwnerRole": "ot"
     }
   ]
 }

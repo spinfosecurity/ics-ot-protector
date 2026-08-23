@@ -2,6 +2,9 @@
 # Unified JSON/CSV export helpers for ICS OT Protector sector scanners.
 # Source this file; do not execute directly.
 
+# shellcheck source=remediation_metadata.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/remediation_metadata.sh"
+
 export_scan_report_init() {
   local output_dir="$1"
   local prefix="$2"
@@ -49,31 +52,19 @@ export_scan_report_build_summary_json() {
   local hosts="${SCAN_REPORT_HOSTS_SCANNED:-0}"
   local ports="${SCAN_REPORT_PORTS_CHECKED:-0}"
   local duration_ms="${SCAN_REPORT_DURATION_MS:-0}"
-  jq -n \
-    --argjson hosts "$hosts" \
-    --argjson ports "$ports" \
-    --argjson duration_ms "$duration_ms" \
-    --slurpfile findings "$findings_file" \
-    '
-    ($findings[0]) as $f |
-    {
-      hosts_scanned: $hosts,
-      ports_checked: $ports,
-      probes_total: ($hosts * $ports),
-      findings_total: ($f | length),
-      findings_by_severity: (
-        reduce $f[] as $item ({}; .[$item.Severity] = ((.[$item.Severity] // 0) + 1))
-      ),
-      duration_ms: $duration_ms
-    }'
+  local findings_json
+  findings_json="$(cat "$findings_file")"
+  findings_json="$(export_scan_report_enrich_findings_json "$findings_json")"
+  printf '%s' "$findings_json" > "$findings_file"
+  export_scan_report_build_extended_summary_json "$findings_json" "$hosts" "$ports" "$duration_ms"
 }
 
 export_scan_report_write_csv() {
   local json_path="$1"
   local csv_path="$2"
   jq -r '
-    ["Timestamp","Host","Port","Service","Severity","Category","Description","Remediation"],
-    (.findings[]? | [.Timestamp, .Host, (.Port|tostring), .Service, .Severity, .Category, .Description, .Remediation])
+    ["Timestamp","Host","Port","Service","Severity","Category","Description","Remediation","RemediationPriority","RemediationAction","OwnerRole"],
+    (.findings[]? | [.Timestamp, .Host, (.Port|tostring), .Service, .Severity, .Category, .Description, .Remediation, (.RemediationPriority // ""), (.RemediationAction // ""), (.OwnerRole // "")])
     | @csv
   ' "$json_path" > "$csv_path"
 }
@@ -166,19 +157,8 @@ export_scan_report_write() {
   report_path="${output_dir}/${prefix}-${timestamp}.json"
   csv_path="${output_dir}/${prefix}-${timestamp}.csv"
 
-  summary=$(jq -n \
-    --argjson hosts "$hosts_scanned" \
-    --argjson ports "$ports_checked" \
-    --argjson duration_ms "$duration_ms" \
-    --argjson findings "$findings_json" \
-    '{
-      hosts_scanned: $hosts,
-      ports_checked: $ports,
-      probes_total: ($hosts * $ports),
-      findings_total: ($findings | length),
-      findings_by_severity: (reduce $findings[] as $item ({}; .[$item.Severity] = ((.[$item.Severity] // 0) + 1))),
-      duration_ms: $duration_ms
-    }')
+  findings_json="$(export_scan_report_enrich_findings_json "$findings_json")"
+  summary=$(export_scan_report_build_extended_summary_json "$findings_json" "$hosts_scanned" "$ports_checked" "$duration_ms")
 
   metadata=$(jq -n \
     --arg sector "$sector" \

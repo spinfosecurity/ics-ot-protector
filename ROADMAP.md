@@ -13,10 +13,10 @@ This roadmap describes intended defensive improvements. It is not a commitment o
 - ✅ Shared scan progress + ETA in scan mode and interactive WUP/BAS
 - ✅ Interactive WUP/BAS parity: preflight, `metadata.summary`, CSV export
 
-## v4.4 — Workflow integration (next)
-- Example mappings for SIEM, ticketing, and ITSM ingestion
-- More structured remediation metadata and report summaries
-- Offline report-review workflow examples
+## v4.4.x — Workflow integration (in progress)
+- ✅ Structured remediation metadata and extended report summaries
+- ✅ Offline report-review workflow and CLI helpers
+- ⏭️ SIEM/ticketing ingestion examples (deferred)
 
 ## Future
 - Safe fixture-driven tests for sector-specific detection hooks
