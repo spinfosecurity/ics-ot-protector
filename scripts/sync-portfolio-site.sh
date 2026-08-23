@@ -17,7 +17,7 @@ fi
 shopt -s dotglob nullglob
 for item in "$SRC"/*; do
   base="$(basename "$item")"
-  [[ "$base" == "README.md" ]] && continue
+  [[ "$base" == "README.md" || "$base" == "GITHUB-PROFILE-README.md" ]] && continue
   cp -a "$item" "$DEST/"
 done
 

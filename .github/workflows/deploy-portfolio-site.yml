@@ -23,7 +23,7 @@ jobs:
           shopt -s dotglob
           for item in portfolio-site/*; do
             base="$(basename "$item")"
-            [[ "$base" == "README.md" ]] && continue
+            [[ "$base" == "README.md" || "$base" == "GITHUB-PROFILE-README.md" ]] && continue
             cp -a "$item" deploy/
           done
 
