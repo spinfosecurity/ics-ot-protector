@@ -55,7 +55,7 @@ pwsh .\scripts\ics-ot-protector.ps1 -Scan -ScanSector energy-grid -Subnets 192.1
 ./scripts/ics-ot-protector.sh scan --sector energy-grid --subnets 192.168.10.0/24 --cve-only
 ```
 
-**Scan mode** runs pre-flight checks (dependencies, CIDR validation, host-count limits), uses the shared TCP scan engine, and writes JSON plus CSV reports with a `metadata.summary` block (hosts scanned, probes, findings by severity, duration). Use `--force` / `-Force` for large subnets (/16 and below) or scopes above 4096 hosts; use `--no-csv` / `-NoCsv` to skip CSV export.
+**Scan mode** runs pre-flight checks (dependencies, CIDR validation, host-count limits), uses the shared TCP scan engine, and writes JSON plus CSV reports with a `metadata.summary` block (hosts scanned, probes, findings by severity, duration). Use `--force` / `-Force` for large subnets (/16 and below) or scopes above 4096 hosts; use `--no-csv` / `-NoCsv` to skip CSV export; use `--config` / `-Config` to merge a YAML/JSON port profile overlay; use `--quiet` / `-Quiet` to suppress progress output.
 
 **Dependencies (scan mode):** Bash scan mode requires `jq` and `timeout` (coreutils). PowerShell scan mode requires PowerShell 5.1+ with built-in JSON cmdlets.
 

@@ -9,6 +9,8 @@ source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 # shellcheck source=../_shared/scan_engine.sh
 source "${REPO_ROOT}/scanners/_shared/scan_engine.sh"
+# shellcheck source=../_shared/preflight.sh
+source "${REPO_ROOT}/scanners/_shared/preflight.sh"
 initialize_bas_config
 
 # =============================================================================
@@ -190,6 +192,13 @@ confirm_scan() {
     echo ""
     read -rp "Start scan? (Y/N): " confirm
     [[ $confirm =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
+
+    local subnets_csv
+    subnets_csv=$(IFS=,; echo "${subnets[*]}")
+    preflight_check_dependencies
+    preflight_validate_scan_scope "$subnets_csv" 0
+    build_bas_port_catalog
+    preflight_print_summary "bas" "${#PORTS[@]}" 50 "$((timeout * 1000))"
 }
 
 generate_report() {
@@ -217,7 +226,9 @@ generate_report() {
             '$arr + [{Timestamp:$ts, Host:$host, Port:$port, Service:$service, Severity:$severity, Category:$category, Description:$description, Remediation:$remediation}]')
     done
 
-    export_scan_report_write "$report_dir" "BAS-results" "bas" "BAS Guardian" "$findings_json"
+    build_bas_port_catalog
+    export_scan_report_write "$report_dir" "BAS-results" "bas" "BAS Guardian" "$findings_json" \
+        "$total_scanned" "${#PORTS[@]}" "$((scan_duration * 1000))" 1
 }
 
 main() {
@@ -241,16 +252,18 @@ main() {
 
     build_bas_port_catalog
     SCAN_ENGINE_FINDING_HOOK=bas_finding_hook
-    SCAN_ENGINE_PROGRESS_HOOK=bas_progress_hook
+    SCAN_ENGINE_PROGRESS_HOOK=scan_engine_default_progress_hook
+    export SCAN_ENGINE_FINDING_HOOK SCAN_ENGINE_PROGRESS_HOOK
 
     for subnet in "${subnets[@]}"; do
         echo -e "\n${CYAN}[SCAN] $subnet${NC}"
         subnet_start=$(date +%s)
         subnet_findings_before=${#findings[@]}
 
+        scan_engine_reset_progress
         build_scan_targets "$subnet"
         SCAN_TARGETS=("${SCAN_TARGETS[@]}")
-        run_tcp_port_scan 1 $((timeout * 1000))
+        run_tcp_port_scan 50 $((timeout * 1000))
 
         total_scanned=$((total_scanned + ${#SCAN_TARGETS[@]}))
         subnet_findings=$(( ${#findings[@]} - subnet_findings_before ))

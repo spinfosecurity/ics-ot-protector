@@ -58,6 +58,29 @@ function ConvertTo-IpRange {
     return ,@($list.ToArray())
 }
 
+function Write-ScanEngineProgress {
+    param(
+        [string]$TargetHost,
+        [int]$Processed,
+        [int]$Total,
+        [datetime]$StartTime,
+        [int]$Interval = 25
+    )
+
+    if ($Total -le 0) { return }
+    if ($Processed % $Interval -ne 0 -and $Processed -ne $Total) { return }
+
+    $elapsed = ([datetime]::UtcNow - $StartTime).TotalSeconds
+    $pct = [math]::Round(($Processed / $Total) * 100, 0)
+    $rate = if ($elapsed -gt 0 -and $Processed -gt 0) { [math]::Round($Processed / $elapsed, 1) } else { '?' }
+    $eta = if ($elapsed -gt 0 -and $Processed -gt 0) {
+        [math]::Round((($Total - $Processed) * $elapsed) / $Processed, 0)
+    } else { '?' }
+
+    Write-Host ("[{0}] [INFO] Progress: {1}/{2} ({3}%) | {4} hosts/s | ETA ~{5}s" -f `
+        (Get-Date -Format 'HH:mm:ss'), $Processed, $Total, $pct, $rate, $eta)
+}
+
 function Get-RailPortCatalogFromConfig {
     param(
         $Config,

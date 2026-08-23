@@ -33,6 +33,7 @@ jobs:
         shell: bash
         run: |
           bash tests/shared/bash/config_behavioral_tests.sh
+          bash tests/shared/bash/config_overlay_tests.sh
           bash tests/shared/bash/scanner_helpers_tests.sh
           bash tests/shared/bash/scan_engine_tests.sh
           bash tests/shared/bash/preflight_tests.sh

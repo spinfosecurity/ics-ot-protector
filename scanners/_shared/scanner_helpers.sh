@@ -133,3 +133,38 @@ count_scan_targets() {
   done
   echo "$total"
 }
+
+# Shared scan progress hook for run_tcp_port_scan (sequential and parallel modes).
+# Args: host processed total
+scan_engine_progress_start_epoch=0
+
+scan_engine_default_progress_hook() {
+  local _host="${1:-}" processed="$2" total="$3"
+  local now elapsed pct eta rate interval="${SCAN_ENGINE_PROGRESS_INTERVAL:-25}"
+
+  (( total > 0 )) || return 0
+  now=$(date +%s)
+  if (( scan_engine_progress_start_epoch == 0 )); then
+    scan_engine_progress_start_epoch=$now
+  fi
+  elapsed=$((now - scan_engine_progress_start_epoch))
+  pct=$((processed * 100 / total))
+  if (( processed % interval != 0 && processed != total )); then
+    return 0
+  fi
+  rate="?"
+  eta="?"
+  if (( elapsed > 0 && processed > 0 )); then
+    rate=$(awk "BEGIN{printf \"%.1f\", $processed / $elapsed}")
+    eta=$(awk "BEGIN{printf \"%.0f\", ($total - $processed) * $elapsed / $processed}")
+  fi
+  printf '\r[%s] [INFO] Progress: %d/%d (%d%%) | %s hosts/s | ETA ~%ss   ' \
+    "$(date '+%H:%M:%S')" "$processed" "$total" "$pct" "$rate" "$eta" >&2
+  if (( processed == total )); then
+    printf '\n' >&2
+  fi
+}
+
+scan_engine_reset_progress() {
+  scan_engine_progress_start_epoch=0
+}

@@ -82,6 +82,7 @@ run_tcp_port_scan() {
   local total=${#SCAN_TARGETS[@]}
 
   if (( threads <= 1 )); then
+    scan_engine_reset_progress 2>/dev/null || scan_engine_progress_start_epoch=0
     local processed=0 host
     for host in "${SCAN_TARGETS[@]}"; do
       processed=$((processed + 1))
@@ -97,15 +98,32 @@ run_tcp_port_scan() {
   export -f scan_engine_default_finding_hook test_tcp_port export_scan_report_append
   export SCAN_ENGINE_FINDING_HOOK
 
-  local processed=0 host
+  scan_engine_reset_progress 2>/dev/null || scan_engine_progress_start_epoch=0
+  local queued=0 completed=0 host
   for host in "${SCAN_TARGETS[@]}"; do
     while (( $(jobs -pr | wc -l) >= threads )); do
-      wait -n 2>/dev/null || true
+      if wait -n 2>/dev/null; then
+        completed=$((completed + 1))
+        if [[ -n "${SCAN_ENGINE_PROGRESS_HOOK:-}" ]]; then
+          "$SCAN_ENGINE_PROGRESS_HOOK" "" "$completed" "$total"
+        fi
+      else
+        break
+      fi
     done
     scan_engine_parallel_worker "$host" &
-    processed=$((processed + 1))
-    printf '\rProgress: %d / %d hosts queued (%d%%)' "$processed" "$total" $(( processed * 100 / total ))
+    queued=$((queued + 1))
   done
-  wait
+  while (( completed < queued )); do
+    if wait -n 2>/dev/null; then
+      completed=$((completed + 1))
+      if [[ -n "${SCAN_ENGINE_PROGRESS_HOOK:-}" ]]; then
+        "$SCAN_ENGINE_PROGRESS_HOOK" "" "$completed" "$total"
+      fi
+    else
+      wait 2>/dev/null || true
+      completed=$queued
+    fi
+  done
   printf '\n'
 }

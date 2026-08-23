@@ -1,0 +1,14 @@
+# Example overlay — merge onto config/sectors/water.json via --config
+# Adds an approved remote-access port or overrides threat context without editing the base sector file.
+
+metadata:
+  overlay_note: "Site-approved remote access monitoring profile"
+
+remote_access_ports:
+  - port: 3390
+    label: "RDP Alternate (site-approved check)"
+    severity: HIGH
+    context_key: RDP
+
+threat_context:
+  RDP: "Site policy — verify jump host and MFA for any reachable RDP listener"

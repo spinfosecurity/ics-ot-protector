@@ -6,6 +6,7 @@
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScanEngine.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Preflight.ps1')
 $script:SectorConfig = Import-SectorConfig -Sector 'bas'
 Initialize-BasConfig -Config $script:SectorConfig
 
@@ -158,12 +159,18 @@ function Confirm-Scan {
         Write-Host "Cancelled."
         exit
     }
+
+    $previewCatalog = Get-BasPortCatalogFromConfig -Config $script:SectorConfig
+    $scope = Confirm-ScanScope -Subnets $script:Subnets
+    Write-PreflightSummary -Sector 'bas' -HostCount $scope.HostCount -PortCount $previewCatalog.Count `
+        -Threads 50 -TimeoutMs $script:TimeoutMs
 }
 
 function Generate-Report {
     $reportDir = ".\reports"
     if (!(Test-Path $reportDir)) { New-Item -ItemType Directory -Path $reportDir | Out-Null }
 
+    $durationMs = [int][math]::Round($script:ScanDuration * 1000, 0)
     $result = Export-ScanReport -Findings $script:Findings -OutputDir $reportDir -Prefix 'BAS-results' -Metadata @{
         sector           = 'bas'
         scanner          = 'BAS Guardian'
@@ -175,7 +182,7 @@ function Generate-Report {
         critical_count   = $script:CriticalCount
         high_count       = $script:HighCount
         duration_seconds = $script:ScanDuration
-    }
+    } -HostsScanned $script:TotalScanned -PortsChecked $portCatalog.Count -DurationMs $durationMs -ExportCsv
 
     return $result.ReportPath
 }
@@ -211,7 +218,7 @@ foreach ($subnet in $script:Subnets) {
     $subnetFindingsBefore = $script:Findings.Count
 
     $targets = Get-SubnetHosts -CidrSubnet $subnet
-    $null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutMs $script:TimeoutMs -Threads 1 -OnFinding {
+    $null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutMs $script:TimeoutMs -Threads 50 -OnFinding {
         param($Finding)
         $script:Findings += $Finding
 
@@ -238,9 +245,7 @@ foreach ($subnet in $script:Subnets) {
         }
     } -OnProgress {
         param($TargetHost, $Processed, $Total)
-        if ($Processed % 50 -eq 0) {
-            Write-Host "  Progress: $Processed/$Total" -ForegroundColor DarkGray
-        }
+        Write-ScanEngineProgress -TargetHost $TargetHost -Processed $Processed -Total $Total -StartTime $startTime
     }
 
     $script:TotalScanned += $targets.Count

@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+### Added
+- **Config overlays (`--config`)** — merge YAML/JSON profiles onto sector config at runtime (`scripts/config/merge_overlay.py`); example at `config/overlays/water-approved-remote.example.yaml`
+- **Scan progress + ETA** — shared `scan_engine_default_progress_hook` / `Write-ScanEngineProgress` with rate and ETA; parallel mode progress in Bash engine
+- **Interactive scanner parity** — WUP WUP and BAS Guardian now run preflight, write `metadata.summary`, and export CSV alongside JSON
+
+### Changed
+- **Scan mode** — `--config`, `--quiet` (Bash) and `-Config`, `-Quiet` (PowerShell) on unified scan runners
+- **BAS Guardian** — increased default concurrency to 50 threads (matching WUP) in Bash and PowerShell
+
 ## [4.2.0] - 2026-08-23
 
 ### Added

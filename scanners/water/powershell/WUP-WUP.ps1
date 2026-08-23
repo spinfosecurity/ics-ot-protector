@@ -53,6 +53,7 @@
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScanEngine.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Preflight.ps1')
 $script:SectorConfig = Import-SectorConfig -Sector 'water'
 Initialize-WaterConfig -Config $script:SectorConfig
 
@@ -304,6 +305,8 @@ function Confirm-Scan {
         Start-Sleep -Seconds 2
         exit
     }
+
+    $null = Confirm-ScanScope -Subnets $Subnets
 }
 
 function Generate-Report {
@@ -328,6 +331,8 @@ function Generate-Report {
             New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
         }
 
+        $durationMs = [int][math]::Round(($EndTime - $StartTime).TotalMilliseconds, 0)
+        $portCount = $RemoteAccessPorts.Count + $CriticalOTPorts.Count
         $result = Export-ScanReport -Findings $Findings -OutputDir $reportDir -Prefix 'WUP-results' -Metadata @{
             sector          = 'water'
             scanner         = 'WUP WUP'
@@ -339,7 +344,7 @@ function Generate-Report {
             critical_count  = $CriticalCount
             high_count      = $HighCount
             duration_seconds = [math]::Round(($EndTime - $StartTime).TotalSeconds, 1)
-        }
+        } -HostsScanned $TotalScanned -PortsChecked $portCount -DurationMs $durationMs -ExportCsv
 
         return $result.ReportPath
     } catch {
@@ -462,9 +467,7 @@ try {
             $subnetCollected.Add($Finding)
         } -OnProgress {
             param($TargetHost, $Processed, $Total)
-            if ($Processed % 25 -eq 0) {
-                Show-ScanProgress -Current $Processed -Total $Total -StartTime $subnetStartTime
-            }
+            Write-ScanEngineProgress -TargetHost $TargetHost -Processed $Processed -Total $Total -StartTime $startTime
         }
 
         foreach ($r in ($subnetCollected | Sort-Object Host, Port)) {

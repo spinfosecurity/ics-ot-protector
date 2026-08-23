@@ -8,10 +8,10 @@ This roadmap describes intended defensive improvements. It is not a commitment o
 - ✅ `metadata.summary` and optional CSV export in scan mode
 - ✅ Fixture-based engine and export integration tests
 
-## v4.3 — Configurability
-- Configurable approved port profiles and scan settings (`--config` / custom YAML overlays)
-- Wire pre-flight, summary, and CSV into interactive sector scanners
-- Clearer operator feedback during long scans (progress, ETA)
+## v4.3 — Configurability (in progress)
+- ✅ `--config` / YAML overlay merged at runtime onto sector JSON
+- ✅ Shared scan progress + ETA in scan mode and interactive WUP/BAS
+- ✅ Interactive WUP/BAS parity: preflight, `metadata.summary`, CSV export
 
 ## v4.4 — Workflow integration
 - Example mappings for SIEM, ticketing, and ITSM ingestion
