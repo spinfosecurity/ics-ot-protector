@@ -4,6 +4,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-08-23
+
 ### Added
 - **Config overlays (`--config`)** — merge YAML/JSON profiles onto sector config at runtime (`scripts/config/merge_overlay.py`); example at `config/overlays/water-approved-remote.example.yaml`
 - **Scan progress + ETA** — shared `scan_engine_default_progress_hook` / `Write-ScanEngineProgress` with rate and ETA; parallel mode progress in Bash engine

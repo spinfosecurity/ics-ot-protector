@@ -8,12 +8,12 @@ This roadmap describes intended defensive improvements. It is not a commitment o
 - ✅ `metadata.summary` and optional CSV export in scan mode
 - ✅ Fixture-based engine and export integration tests
 
-## v4.3 — Configurability (in progress)
+## v4.3.x — Configurability (current)
 - ✅ `--config` / YAML overlay merged at runtime onto sector JSON
 - ✅ Shared scan progress + ETA in scan mode and interactive WUP/BAS
 - ✅ Interactive WUP/BAS parity: preflight, `metadata.summary`, CSV export
 
-## v4.4 — Workflow integration
+## v4.4 — Workflow integration (next)
 - Example mappings for SIEM, ticketing, and ITSM ingestion
 - More structured remediation metadata and report summaries
 - Offline report-review workflow examples
