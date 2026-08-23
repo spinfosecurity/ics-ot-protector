@@ -1,0 +1,40 @@
+name: Deploy portfolio site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'portfolio-site/**'
+      - '.github/workflows/deploy-portfolio-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Prepare deploy tree
+        run: |
+          mkdir deploy
+          shopt -s dotglob
+          for item in portfolio-site/*; do
+            base="$(basename "$item")"
+            [[ "$base" == "README.md" ]] && continue
+            cp -a "$item" deploy/
+          done
+
+      - name: Push to spinfosecurity.github.io
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        with:
+          source-directory: deploy
+          destination-github-username: spinfosecurity
+          destination-repository-name: spinfosecurity.github.io
+          user-email: github-actions[bot]@users.noreply.github.com
+          user-name: github-actions[bot]
+          target-branch: main

@@ -1,0 +1,8 @@
+{
+  "repositoryDependencies": [
+    {
+      "repoUrl": "github.com/spinfosecurity/spinfosecurity.github.io",
+      "ref": "main"
+    }
+  ]
+}
