@@ -40,11 +40,7 @@ Describe 'Invoke-TcpPortScan integration' {
                 Port = $port; Service = 'Mock'; Severity = 'HIGH'
                 Category = 'Test'; Description = 'mock'; Remediation = 'none'
             })
-            $hits = @()
-            $null = Invoke-TcpPortScan -Targets @('127.0.0.1') -PortCatalog $catalog -TimeoutMs 500 -Threads 1 -OnFinding {
-                param($Finding)
-                $hits += $Finding
-            }
+            $hits = Invoke-TcpPortScan -Targets @('127.0.0.1') -PortCatalog $catalog -TimeoutMs 500 -Threads 1
             $hits.Count | Should -Be 1
             $hits[0].Port | Should -Be $port
         } finally {

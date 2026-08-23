@@ -79,7 +79,7 @@ function Build-ScanTargets {
         }
     }
 
-    return ,@($targets)
+    return @($targets)
 }
 
 function Invoke-TcpPortScan {

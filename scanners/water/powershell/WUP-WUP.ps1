@@ -319,6 +319,10 @@ function Generate-Report {
     )
 
     try {
+        if ($null -eq $Findings) {
+            $Findings = @()
+        }
+
         $reportDir = Join-Path ([System.Environment]::GetFolderPath('UserProfile')) "WaterUtilitySecurity\Reports"
         if (!(Test-Path $reportDir)) {
             New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
