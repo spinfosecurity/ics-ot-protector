@@ -1,7 +1,7 @@
 {
   "name": "ICS OT Protector",
   "user": "ubuntu",
-  "install": "bash .cursor/install.sh",
+  "install": "bash \"$([ -f .cursor/install.sh ] && echo .cursor/install.sh || echo repos/ics-ot-protector/.cursor/install.sh)\"",
   "repositoryDependencies": [
     {
       "repoUrl": "github.com/spinfosecurity/spinfosecurity.github.io",
