@@ -14,6 +14,12 @@ initialize_energy_grid_config
 [[ -n "${cve_checks[CVE-2026-42945]:-}" ]] && pass "CVE-2026-42945 present" || fail "CVE-2026-42945 missing"
 [[ -n "${remote_access_ports[23]:-}" ]] && pass "Telnet port 23 in remote access" || fail "port 23 missing"
 [[ -n "${ics_ports[20000]:-}" ]] && pass "DNP3 port 20000 in ICS table" || fail "port 20000 missing"
+build_energy_grid_port_catalog full
+[[ ${#PORTS[@]} -gt 10 ]] && pass "energy-grid port catalog built (${#PORTS[@]} entries)" || fail "energy-grid port catalog too small"
+build_energy_grid_port_catalog cve_only
+cve_only_count=${#PORTS[@]}
+build_energy_grid_port_catalog full
+[[ ${#PORTS[@]} -gt $cve_only_count ]] && pass "full catalog larger than cve_only" || fail "cve_only filter not working"
 
 echo ""
 echo "=== bas config ==="

@@ -88,6 +88,30 @@ for p in d['ics_ports']:
 " <<< "$json")
 }
 
+build_energy_grid_port_catalog() {
+  local mode="${1:-full}"
+  PORTS=()
+  local cve_id ports_str description severity remediation port_list port
+  for cve_id in "${!cve_checks[@]}"; do
+    IFS='|' read -r ports_str description severity remediation <<< "${cve_checks[$cve_id]}"
+    IFS=',' read -r -a port_list <<< "$ports_str"
+    for port in "${port_list[@]}"; do
+      PORTS+=("${port}|${cve_id}|${severity}|CVE|${description}|${remediation}")
+    done
+  done
+  if [[ "$mode" != "cve_only" ]]; then
+    local name
+    for port in "${!remote_access_ports[@]}"; do
+      IFS='|' read -r name severity description <<< "${remote_access_ports[$port]}"
+      PORTS+=("${port}|REMOTE-ACCESS:${name}|${severity}|RemoteAccess|${description}|See docs/CISA-Reference.md")
+    done
+    for port in "${!ics_ports[@]}"; do
+      IFS='|' read -r name severity description <<< "${ics_ports[$port]}"
+      PORTS+=("${port}|ICS-PROTOCOL:${name}|${severity}|ICS|${description}|See docs/Threat-Intelligence.md")
+    done
+  fi
+}
+
 initialize_bas_config() {
   local json
   json="$(_load_config_json bas)" || return 1

@@ -4,6 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+### Added
+- **Shared Bash scan engine** — `scanners/_shared/scan_engine.sh` with `run_tcp_port_scan()` for unified host×port probing, deduplication, and parallel workers
+- **Full CIDR expansion** — `expand_cidr()` and `build_scan_targets()` in `scanner_helpers.sh`
+- **Energy-grid port catalog builder** — `build_energy_grid_port_catalog()` converts sector config to unified port records
+
+### Changed
+- **EGP and ROP Bash scanners** — refactored to use the shared scan engine instead of inline scan loops
+
 ## [4.1.2] - 2026-08-23
 
 ### Added
