@@ -70,46 +70,60 @@ EOF
 }
 
 deploy_portfolio_site() {
-  local tmp pages_dir="${ROOT}/portfolio-site"
+  local pages_dir="${ROOT}/portfolio-site"
   [[ -d "$pages_dir" ]] || { echo "Missing $pages_dir" >&2; exit 1; }
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' RETURN
-  echo "Cloning ${OWNER}/${PAGES_REPO}..."
-  gh repo clone "${OWNER}/${PAGES_REPO}" "$tmp/pages" -- --depth=1
-  "${ROOT}/scripts/sync-portfolio-site.sh" "$tmp/pages"
-  cd "$tmp/pages"
-  if git diff --quiet && git diff --cached --quiet; then
-    echo "Portfolio site already up to date."
-    return 0
-  fi
-  git add -A
-  git commit -m "Update portfolio site (hiring pack + SEO)"
-  git push origin main
-  echo "Published: https://${OWNER}.github.io/"
+
+  (
+    set -euo pipefail
+    local tmp
+    tmp="$(mktemp -d)"
+    cleanup() { rm -rf "$tmp"; }
+    trap cleanup EXIT
+
+    echo "Cloning ${OWNER}/${PAGES_REPO}..."
+    gh repo clone "${OWNER}/${PAGES_REPO}" "$tmp/pages" -- --depth=1
+    "${ROOT}/scripts/sync-portfolio-site.sh" "$tmp/pages"
+    cd "$tmp/pages"
+    if git diff --quiet && git diff --cached --quiet; then
+      echo "Portfolio site already up to date."
+      exit 0
+    fi
+    git add -A
+    git commit -m "Update portfolio site (hiring pack + SEO)"
+    git push origin main
+    echo "Published: https://${OWNER}.github.io/"
+  )
 }
 
 update_profile_readme() {
-  local tmp src="${ROOT}/portfolio-site/GITHUB-PROFILE-README.md"
+  local src="${ROOT}/portfolio-site/GITHUB-PROFILE-README.md"
   [[ -f "$src" ]] || { echo "Missing $src" >&2; return 1; }
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' RETURN
-  if gh repo view "${OWNER}/${PROFILE_REPO}" >/dev/null 2>&1; then
-    gh repo clone "${OWNER}/${PROFILE_REPO}" "$tmp/profile" -- --depth=1
-  else
-    echo "Creating ${OWNER}/${PROFILE_REPO} for profile README..."
-    gh repo create "${OWNER}/${PROFILE_REPO}" --public --description "GitHub profile README" --clone=false
-    gh repo clone "${OWNER}/${PROFILE_REPO}" "$tmp/profile" -- --depth=1
-  fi
-  head -n 33 "$src" > "$tmp/profile/README.md"
-  cd "$tmp/profile"
-  git add README.md
-  if git diff --cached --quiet; then
-    echo "Profile README unchanged."
-    return 0
-  fi
-  git commit -m "Update profile README for hiring visibility"
-  git push origin main
-  echo "Profile README updated: https://github.com/${OWNER}"
+
+  (
+    set -euo pipefail
+    local tmp
+    tmp="$(mktemp -d)"
+    cleanup() { rm -rf "$tmp"; }
+    trap cleanup EXIT
+
+    if gh repo view "${OWNER}/${PROFILE_REPO}" >/dev/null 2>&1; then
+      gh repo clone "${OWNER}/${PROFILE_REPO}" "$tmp/profile" -- --depth=1
+    else
+      echo "Creating ${OWNER}/${PROFILE_REPO} for profile README..."
+      gh repo create "${OWNER}/${PROFILE_REPO}" --public --description "GitHub profile README" --clone=false
+      gh repo clone "${OWNER}/${PROFILE_REPO}" "$tmp/profile" -- --depth=1
+    fi
+    head -n 33 "$src" > "$tmp/profile/README.md"
+    cd "$tmp/profile"
+    git add README.md
+    if git diff --cached --quiet; then
+      echo "Profile README unchanged."
+      exit 0
+    fi
+    git commit -m "Update profile README for hiring visibility"
+    git push origin main
+    echo "Profile README updated: https://github.com/${OWNER}"
+  )
 }
 
 print_deploy_token_instructions() {
@@ -125,6 +139,25 @@ EOF
 
 main() {
   require_gh
+  cd "$ROOT"
+
+  case "${1:-}" in
+    --profile-only)
+      update_profile_readme
+      echo "Profile README step complete."
+      exit 0
+      ;;
+    --help|-h)
+      cat <<EOF
+Usage: setup-github-credibility.sh [--profile-only]
+
+  (default)  Run all Lane B steps
+  --profile-only  Update spinfosecurity/spinfosecurity profile README only
+EOF
+      exit 0
+      ;;
+  esac
+
   set_repo_topics
   close_stale_pr
   pin_flagship_repo
