@@ -37,16 +37,27 @@ All scanners share a defensive posture: **TCP port reachability checks only** �
 ### Unified launcher (all sectors)
 
 ```powershell
-# PowerShell
+# PowerShell — interactive sector scanner
 .\scripts\ics-ot-protector.ps1 -Sector water
 .\scripts\ics-ot-protector.ps1 -Sector energy-grid -Subnet 192.168.10.0/24
+
+# PowerShell — non-interactive scan mode (all sectors, shared engine)
+pwsh .\scripts\ics-ot-protector.ps1 -Scan -ScanSector energy-grid -Subnets 192.168.10.0/24 -CveOnly
 ```
 
 ```bash
-# Bash
+# Bash — interactive sector scanner
 ./scripts/ics-ot-protector.sh water
 ./scripts/ics-ot-protector.sh energy-grid -s 192.168.10.0/24
+
+# Bash — non-interactive scan mode (all sectors, shared engine)
+./scripts/ics-ot-protector.sh scan --sector rail --subnets 10.10.20.0/24
+./scripts/ics-ot-protector.sh scan --sector energy-grid --subnets 192.168.10.0/24 --cve-only
 ```
+
+**Scan mode** runs pre-flight checks (dependencies, CIDR validation, host-count limits), uses the shared TCP scan engine, and writes JSON plus CSV reports with a `metadata.summary` block (hosts scanned, probes, findings by severity, duration). Use `--force` / `-Force` for large subnets (/16 and below) or scopes above 4096 hosts; use `--no-csv` / `-NoCsv` to skip CSV export.
+
+**Dependencies (scan mode):** Bash scan mode requires `jq` and `timeout` (coreutils). PowerShell scan mode requires PowerShell 5.1+ with built-in JSON cmdlets.
 
 Pick a sector scanner directly:
 
@@ -87,7 +98,23 @@ pwsh ./scanners/rail/powershell/ROP.ps1 -Subnets 10.10.20.0/24
 
 > **Backward compatibility:** The water scanner's legacy paths (`scripts/powershell/WUP-WUP.ps1` and `scripts/bash/WUP-WUP.sh`) still work and redirect to the canonical location.
 
-All scanners export findings as **JSON** (`schema_version` 1.0) with sector metadata and a normalized findings array.
+All scanners export findings as **JSON** (`schema_version` 1.0) with sector metadata, an optional **`metadata.summary`** block (scan stats and severity counts), and a normalized findings array. Non-interactive **scan mode** also writes a companion **CSV** file by default.
+
+---
+
+## Architecture
+
+Sector scanners share a common scan pipeline under `scanners/_shared/`:
+
+| Module | Bash | PowerShell |
+|--------|------|------------|
+| Scan engine | `scan_engine.sh` | `ScanEngine.ps1` |
+| Pre-flight validation | `preflight.sh` | `Preflight.ps1` |
+| Report export | `export_scan_report.sh` | `Export-ScanReport.ps1` |
+| Sector config | `load_sector_config.sh` | `Import-SectorConfig.ps1` |
+| Non-interactive runner | `run_sector_scan.sh` | `Run-SectorScan.ps1` |
+
+Interactive sector scanners (WUP WUP, BAS Guardian) retain their wizards; CLI scanners (EGP, ROP) accept subnet arguments directly. **Scan mode** (`./scripts/ics-ot-protector.sh scan …` / `-Scan`) uses the shared engine for all four sectors with consistent reporting and pre-flight scope checks.
 
 ---
 
@@ -126,7 +153,7 @@ ics-ot-protector/
 │   ├── sample-report.md    # JSON export format reference
 │   └── sample-report.json  # Example scan report (schema v1.0)
 ├── tests/
-│   ├── shared/             # Monorepo-wide validation
+│   ├── shared/             # Monorepo-wide validation + shared engine tests
 │   ├── water/              # WUP WUP behavioral + repo tests
 │   ├── energy-grid/
 │   ├── bas/

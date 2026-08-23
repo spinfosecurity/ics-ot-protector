@@ -7,6 +7,8 @@ source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
 source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
+# shellcheck source=../_shared/scan_engine.sh
+source "${REPO_ROOT}/scanners/_shared/scan_engine.sh"
 initialize_bas_config
 
 # =============================================================================
@@ -24,6 +26,39 @@ NC='\033[0m'
 
 test_port() {
     test_tcp_port "$1" "$2" "$3"
+}
+
+bas_finding_hook() {
+    local ip="$1" port="$2" service="$3" severity="$4" _category="$5" description="$6" remediation="$7"
+    findings+=("$ip|$port|$service|$severity|$description|$remediation")
+
+    if [[ "$service" == *"BMS Platform"* ]]; then
+        echo -e "  ${RED}[!!! VENDOR CRITICAL !!!] $ip:$port - ${service% BMS Platform}${NC}"
+        echo -e "      ${RED}$description${NC}"
+        critical_count=$((critical_count + 1))
+    elif [[ "$severity" == "CRITICAL" ]]; then
+        echo -e "  ${RED}[CRITICAL] $ip:$port - $service${NC}"
+        echo -e "      ${RED}$description${NC}"
+        critical_count=$((critical_count + 1))
+    elif [[ "$service" == *"BACnet"* || "$service" == *"LonWorks"* || "$service" == *"Tridium"* ]]; then
+        echo -e "  ${MAGENTA}[BAS] $ip:$port - $service${NC}"
+        high_count=$((high_count + 1))
+    else
+        echo -e "  ${YELLOW}[HIGH] $ip:$port - $service${NC}"
+        if [[ "$port" == "80" ]]; then
+            echo -e "      ${YELLOW}${THREAT_CONTEXT[Honeywell]}${NC}"
+        else
+            echo -e "      ${YELLOW}$description${NC}"
+        fi
+        high_count=$((high_count + 1))
+    fi
+}
+
+bas_progress_hook() {
+    local _host="$1" processed="$2" total="$3"
+    if (( processed % 50 == 0 )); then
+        echo -e "${DARK_GRAY}  Progress: ${processed}/${total}${NC}"
+    fi
 }
 
 show_intro() {
@@ -204,66 +239,21 @@ main() {
     high_count=0
     start_time=$(date +%s)
 
+    build_bas_port_catalog
+    SCAN_ENGINE_FINDING_HOOK=bas_finding_hook
+    SCAN_ENGINE_PROGRESS_HOOK=bas_progress_hook
+
     for subnet in "${subnets[@]}"; do
-        prefix=$(get_network_prefix "$subnet")
         echo -e "\n${CYAN}[SCAN] $subnet${NC}"
         subnet_start=$(date +%s)
-        subnet_findings=0
+        subnet_findings_before=${#findings[@]}
 
-        for i in $(seq 1 254); do
-            ip="$prefix.$i"
-            total_scanned=$((total_scanned + 1))
-            [ $((i % 50)) -eq 0 ] && echo -e "${DARK_GRAY}  Progress: $i/254${NC}"
+        build_scan_targets "$subnet"
+        SCAN_TARGETS=("${SCAN_TARGETS[@]}")
+        run_tcp_port_scan 1 $((timeout * 1000))
 
-            for port in "${!REMOTE_ACCESS_PORTS[@]}"; do
-                if test_port "$ip" "$port" "$timeout"; then
-                    service=${REMOTE_ACCESS_PORTS[$port]}
-                    key=$(echo "$service" | cut -d' ' -f1)
-                    threat=${THREAT_CONTEXT[$key]}
-                    [ -z "$threat" ] && threat="Remote access point - verify authorization and MFA"
-
-                    if [[ "$port" =~ ^(3389|5900|5901|22)$ ]]; then
-                        echo -e "  ${RED}[CRITICAL] $ip:$port - $service${NC}"
-                        echo -e "      ${RED}$threat${NC}"
-                        findings+=("$ip|$port|$service|CRITICAL|$threat|BLOCK IMMEDIATELY or restrict to VPN only")
-                        critical_count=$((critical_count + 1))
-                    else
-                        echo -e "  ${YELLOW}[HIGH] $ip:$port - $service${NC}"
-                        if [ "$port" = "80" ]; then
-                            echo -e "      ${YELLOW}${THREAT_CONTEXT[Honeywell]}${NC}"
-                        fi
-                        findings+=("$ip|$port|$service|HIGH|$threat|Restrict to management VLAN; implement MFA; verify auth enabled")
-                        high_count=$((high_count + 1))
-                    fi
-                    subnet_findings=$((subnet_findings + 1))
-                fi
-            done
-
-            for port in "${!CRITICAL_BAS_PORTS[@]}"; do
-                if test_port "$ip" "$port" "$timeout"; then
-                    protocol=${CRITICAL_BAS_PORTS[$port]}
-                    echo -e "  ${MAGENTA}[BAS] $ip:$port - $protocol${NC}"
-                    threat_key=$(echo "$protocol" | cut -d' ' -f1)
-                    threat=${THREAT_CONTEXT[$threat_key]}
-                    findings+=("$ip|$port|$protocol|HIGH|$threat|Remove from internet; segment from IT network; patch bacnet-stack")
-                    high_count=$((high_count + 1))
-                    subnet_findings=$((subnet_findings + 1))
-                fi
-            done
-
-            for port in "${!VENDOR_ALERT_PORTS[@]}"; do
-                if test_port "$ip" "$port" "$timeout"; then
-                    IFS='|' read -r vendor cve cvss desc action <<< "${VENDOR_ALERT_PORTS[$port]}"
-                    echo -e "  ${RED}[!!! VENDOR CRITICAL !!!] $ip:$port - $vendor${NC}"
-                    echo -e "      ${RED}$cve (CVSS: $cvss)${NC}"
-                    echo -e "      ${RED}$desc${NC}"
-                    findings+=("$ip|$port|$vendor BMS Platform|CRITICAL|$cve - $desc|$action")
-                    critical_count=$((critical_count + 1))
-                    subnet_findings=$((subnet_findings + 1))
-                fi
-            done
-        done
-
+        total_scanned=$((total_scanned + ${#SCAN_TARGETS[@]}))
+        subnet_findings=$(( ${#findings[@]} - subnet_findings_before ))
         echo -e "${GREEN}  [COMPLETE] $subnet_findings findings in $(( $(date +%s) - subnet_start ))s${NC}"
     done
 

@@ -34,6 +34,9 @@ jobs:
         run: |
           bash tests/shared/bash/config_behavioral_tests.sh
           bash tests/shared/bash/scanner_helpers_tests.sh
+          bash tests/shared/bash/scan_engine_tests.sh
+          bash tests/shared/bash/preflight_tests.sh
+          bash tests/shared/bash/scan_engine_integration_tests.sh
           bash tests/shared/bash/launcher_tests.sh
           bash tests/shared/bash/repository_tests.sh
           bash tests/water/bash/repository_tests.sh

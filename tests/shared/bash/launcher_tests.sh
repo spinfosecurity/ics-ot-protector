@@ -23,8 +23,10 @@ SH_LAUNCHER="${ROOT}/scripts/ics-ot-protector.sh"
 [[ -f "$PS1_LAUNCHER" ]] || { echo "Missing PowerShell launcher" >&2; exit 1; }
 [[ -f "$SH_LAUNCHER" ]] || { echo "Missing Bash launcher" >&2; exit 1; }
 bash -n "$SH_LAUNCHER"
+bash -n "${ROOT}/scanners/_shared/run_sector_scan.sh"
 
 "$SH_LAUNCHER" --help | grep -qi 'energy-grid'
+"$SH_LAUNCHER" --help | grep -qi 'scan --sector'
 
 if "$SH_LAUNCHER" invalid-sector 2>/dev/null; then
   echo "Expected unknown sector to fail" >&2

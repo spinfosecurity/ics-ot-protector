@@ -55,7 +55,7 @@ function ConvertTo-IpRange {
         [array]::Reverse($b)
         $list.Add(([System.Net.IPAddress]::new($b)).ToString())
     }
-    return , $list
+    return ,@($list.ToArray())
 }
 
 function Get-RailPortCatalogFromConfig {
@@ -66,10 +66,11 @@ function Get-RailPortCatalogFromConfig {
     $entries = @($Config.port_catalog | ForEach-Object {
         [PSCustomObject]@{
             Port        = [int]$_.port
-            Name        = $_.name
+            Service     = $_.name
             Severity    = $_.severity
             Category    = $_.category
             Description = $_.description
+            Remediation = ''
         }
     })
     if ($FastEotHot) {

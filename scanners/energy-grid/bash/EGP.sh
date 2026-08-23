@@ -34,6 +34,8 @@ source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
 source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
+# shellcheck source=../_shared/scan_engine.sh
+source "${REPO_ROOT}/scanners/_shared/scan_engine.sh"
 initialize_energy_grid_config
 
 # ---------------------------------------------------------------------------
@@ -118,15 +120,16 @@ validate_inputs() {
 }
 
 # ---------------------------------------------------------------------------
-# Write finding to console and JSON export
+# EGP-specific finding output (colored console + JSON export)
 # ---------------------------------------------------------------------------
-write_finding() {
+egp_finding_hook() {
     local ip="$1"
     local port="$2"
     local label="$3"
     local severity="$4"
-    local description="$5"
-    local remediation="$6"
+    local category="$5"
+    local description="$6"
+    local remediation="$7"
 
     local color="$NC"
     case "$severity" in
@@ -135,21 +138,21 @@ write_finding() {
         MEDIUM)   color="$YELLOW" ;;
     esac
 
+    echo ""
     echo -e "  ${color}[${severity}]${NC} ${WHITE}${ip}:${port}${NC} - ${color}${label}${NC}"
     echo -e "    ${GRAY}${description}${NC}"
 
-    local category="General"
-    case "$label" in
-        CVE-*) category="CVE" ;;
-        REMOTE-ACCESS:*) category="RemoteAccess" ;;
-        ICS-PROTOCOL:*) category="ICS" ;;
-    esac
     export_scan_report_append "$ip" "$port" "$label" "$severity" "$category" "$description" "$remediation"
 }
 
-# ---------------------------------------------------------------------------
-# Port/CVE definitions loaded from config/sectors/energy-grid.yaml
-# ---------------------------------------------------------------------------
+egp_progress_hook() {
+    local ip="$1"
+    local processed="$2"
+    local total="$3"
+    local pct=$(( (processed * 100) / total ))
+    printf "\r${CYAN}[*] Progress: [%-50s] %d%% | Host: %-16s${NC}" \
+        "$(printf '#%.0s' $(seq 1 $((pct / 2))))" "$pct" "$ip"
+}
 
 # ---------------------------------------------------------------------------
 # Banner
@@ -174,7 +177,6 @@ parse_args "$@"
 validate_inputs
 show_banner
 
-# Prepare output directory
 mkdir -p "$OUTPUT_DIR" || { echo "[-] Cannot create output directory: $OUTPUT_DIR" >&2; exit 1; }
 
 if [[ "$CVE_ONLY" == true ]]; then
@@ -199,66 +201,21 @@ echo -e "${CYAN}[*] Timeout    : ${TIMEOUT}s per port${NC}"
 echo -e "${CYAN}[*] Output Dir : ${OUTPUT_DIR}${NC}"
 echo ""
 
-# Extract base prefix from /24 CIDR
-BASE_IP="${SUBNET%/24}"
-PREFIX="${BASE_IP%.*}"
+if [[ "$CVE_ONLY" == true ]]; then
+  build_energy_grid_port_catalog cve_only
+else
+  build_energy_grid_port_catalog full
+fi
 
-FINDINGS=0
-HOSTS_SCANNED=0
-TOTAL_HOSTS=254
-declare -A seen_findings
+build_scan_targets "$SUBNET"
+SCAN_TARGETS=("${SCAN_TARGETS[@]}")
+HOSTS_SCANNED=${#SCAN_TARGETS[@]}
 
-for i in $(seq 1 254); do
-    IP="${PREFIX}.${i}"
-    HOSTS_SCANNED=$((HOSTS_SCANNED + 1))
-    PCT=$(( (HOSTS_SCANNED * 100) / TOTAL_HOSTS ))
+SCAN_ENGINE_FINDING_HOOK=egp_finding_hook
+SCAN_ENGINE_PROGRESS_HOOK=egp_progress_hook
+run_tcp_port_scan 1 $((TIMEOUT * 1000))
 
-    # Progress bar
-    printf "\r${CYAN}[*] Progress: [%-50s] %d%% | Host: %-16s${NC}" \
-        "$(printf '#%.0s' $(seq 1 $((PCT / 2))))" "$PCT" "$IP"
-
-    # --- CVE Checks ---
-    for cve_id in "${!cve_checks[@]}"; do
-        IFS='|' read -r ports_str description severity remediation <<< "${cve_checks[$cve_id]}"
-        IFS=',' read -r -a port_list <<< "$ports_str"
-        for port in "${port_list[@]}"; do
-            dedup_key="${IP}:${port}"
-            if [[ -z "${seen_findings[$dedup_key]+x}" ]] && test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
-                seen_findings[$dedup_key]=1
-                echo ""
-                write_finding "$IP" "$port" "$cve_id" "$severity" "$description" "$remediation"
-                FINDINGS=$((FINDINGS + 1))
-            fi
-        done
-    done
-
-    if [[ "$CVE_ONLY" == false ]]; then
-        # --- Remote Access Checks ---
-        for port in "${!remote_access_ports[@]}"; do
-            IFS='|' read -r name severity description <<< "${remote_access_ports[$port]}"
-            dedup_key="${IP}:${port}"
-            if [[ -z "${seen_findings[$dedup_key]+x}" ]] && test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
-                seen_findings[$dedup_key]=1
-                echo ""
-                write_finding "$IP" "$port" "REMOTE-ACCESS:${name}" "$severity" "$description" "See docs/CISA-Reference.md"
-                FINDINGS=$((FINDINGS + 1))
-            fi
-        done
-
-        # --- ICS Protocol Checks ---
-        for port in "${!ics_ports[@]}"; do
-            IFS='|' read -r name severity description <<< "${ics_ports[$port]}"
-            dedup_key="${IP}:${port}"
-            if [[ -z "${seen_findings[$dedup_key]+x}" ]] && test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
-                seen_findings[$dedup_key]=1
-                echo ""
-                write_finding "$IP" "$port" "ICS-PROTOCOL:${name}" "$severity" "$description" "See docs/Threat-Intelligence.md"
-                FINDINGS=$((FINDINGS + 1))
-            fi
-        done
-    fi
-done
-
+FINDINGS=$SCAN_ENGINE_FINDINGS
 echo ""
 
 JSON_REPORT="$(export_scan_report_finalize)"
