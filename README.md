@@ -180,6 +180,7 @@ ics-ot-protector/
 
 ### Shared
 - [For employers and hiring managers](docs/for-employers.md)
+- [GitHub credibility setup (topics, pin, live site)](docs/github-credibility-setup.md)
 - [Safe Operation Guide](docs/safe-operation.md)
 - [Threat Model](docs/threat-model.md)
 - [Sample Report Format](docs/sample-report.md) · [Example JSON](docs/sample-report.json) · [Offline report review](docs/report-review-workflow.md)
