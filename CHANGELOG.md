@@ -4,6 +4,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-08-23
+
 ### Added
 - **Structured remediation metadata** — findings include `RemediationPriority`, `RemediationAction`, and `OwnerRole`; extended `metadata.summary` with category/priority/owner breakdowns and `top_hosts`
 - **Offline report review** — `scripts/review_scan_report.sh`, `scripts/Review-ScanReport.ps1`, and [report-review-workflow.md](docs/report-review-workflow.md)
