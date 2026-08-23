@@ -23,6 +23,10 @@ Synthetic example only — addresses and findings are fictional. See [sample-rep
 | `probes_total` | Approximate host × port probe count |
 | `findings_total` | Number of open-port findings |
 | `findings_by_severity` | Counts keyed by severity (`CRITICAL`, `HIGH`, `MEDIUM`, …) |
+| `findings_by_category` | Counts keyed by finding category |
+| `findings_by_priority` | Counts keyed by `RemediationPriority` (`IMMEDIATE`, `URGENT`, `PLANNED`) |
+| `findings_by_owner_role` | Counts keyed by suggested owner (`ot`, `it`, `security`) |
+| `top_hosts` | Up to five hosts with the highest finding counts |
 | `duration_ms` | Wall-clock scan duration in milliseconds |
 
 Each finding object:
@@ -37,11 +41,24 @@ Each finding object:
 | `Category` | e.g. Remote Access, OT Protocol Exposure, CVE |
 | `Description` | Threat context or exposure rationale |
 | `Remediation` | Recommended defensive action |
+| `RemediationPriority` | Triage urgency: `IMMEDIATE`, `URGENT`, or `PLANNED` |
+| `RemediationAction` | Action type: `block`, `segment`, `patch`, or `verify` |
+| `OwnerRole` | Suggested owner: `ot`, `it`, or `security` |
 
 ## JSON and CSV
 
-- **JSON** is the canonical export for sharing with IT/OT teams, ticketing systems, or downstream tooling.
-- **CSV** is written alongside JSON in non-interactive **scan mode** by default (same timestamped basename). Columns: `Timestamp`, `Host`, `Port`, `Service`, `Severity`, `Category`, `Description`, `Remediation`. Pass `--no-csv` (Bash) or `-NoCsv` (PowerShell) to skip CSV.
+- **JSON** is the canonical export for sharing with IT/OT teams or downstream tooling.
+- **CSV** is written alongside JSON in non-interactive **scan mode** by default (same timestamped basename). Columns include remediation metadata (`RemediationPriority`, `RemediationAction`, `OwnerRole`). Pass `--no-csv` (Bash) or `-NoCsv` (PowerShell) to skip CSV.
+
+## Offline report review
+
+After a scan, use the review helpers to generate a triage summary without re-running the scanner:
+
+```bash
+./scripts/review_scan_report.sh ./reports/WUP-results-20260823-120000.json
+```
+
+See [report-review-workflow.md](report-review-workflow.md) for the full offline triage process.
 
 ## Console vs file output
 

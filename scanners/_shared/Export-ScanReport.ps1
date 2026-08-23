@@ -1,6 +1,8 @@
 # Unified JSON export for ICS OT Protector sector scanners.
 # All scanners write schema_version 1.0 documents with metadata + findings.
 
+. "$PSScriptRoot/RemediationMetadata.ps1"
+
 function Get-SeverityRank {
     param([string]$Severity)
     switch ($Severity) {
@@ -74,7 +76,7 @@ function ConvertTo-StandardFindings {
         return
     }
 
-    Write-Output $normalized -NoEnumerate
+    Write-Output (Add-RemediationMetadata -Findings @($normalized)) -NoEnumerate
 }
 
 function Get-ScanReportSummary {
@@ -121,22 +123,28 @@ function Export-ScanReportCsv {
                 Port        = $f.Port
                 Service     = $f.Service
                 Severity    = $f.Severity
-                Category    = $f.Category
-                Description = $f.Description
-                Remediation = $f.Remediation
+                Category            = $f.Category
+                Description         = $f.Description
+                Remediation         = $f.Remediation
+                RemediationPriority = $f.RemediationPriority
+                RemediationAction   = $f.RemediationAction
+                OwnerRole           = $f.OwnerRole
             }
         }
     )
     if ($rows.Count -eq 0) {
         $header = [pscustomobject]@{
-            Timestamp   = 'Timestamp'
-            Host        = 'Host'
-            Port        = 'Port'
-            Service     = 'Service'
-            Severity    = 'Severity'
-            Category    = 'Category'
-            Description = 'Description'
-            Remediation = 'Remediation'
+            Timestamp           = 'Timestamp'
+            Host                = 'Host'
+            Port                = 'Port'
+            Service             = 'Service'
+            Severity            = 'Severity'
+            Category            = 'Category'
+            Description         = 'Description'
+            Remediation         = 'Remediation'
+            RemediationPriority = 'RemediationPriority'
+            RemediationAction   = 'RemediationAction'
+            OwnerRole           = 'OwnerRole'
         }
         $header | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
         return
@@ -167,7 +175,7 @@ function Export-ScanReportJson {
         $ordered = @()
     }
     if (-not $Metadata.summary) {
-        $Metadata.summary = Get-ScanReportSummary -Findings $ordered `
+        $Metadata.summary = Get-ExtendedScanReportSummary -Findings $ordered `
             -HostsScanned $HostsScanned -PortsChecked $PortsChecked -DurationMs $DurationMs
     }
 

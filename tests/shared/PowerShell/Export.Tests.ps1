@@ -67,6 +67,7 @@ Describe 'Export-ScanReport' {
         @($json.findings).Count | Should -Be 1
         $json.findings[0].Host | Should -Be '192.168.1.10'
         $json.metadata.summary.findings_total | Should -Be 1
+        $json.findings[0].RemediationPriority | Should -Not -BeNullOrEmpty
     }
 
     It 'writes CSV when ExportCsv is enabled' {
