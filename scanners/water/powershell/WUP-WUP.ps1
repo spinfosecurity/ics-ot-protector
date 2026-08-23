@@ -51,8 +51,10 @@
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScanEngine.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
-Initialize-WaterConfig -Config (Import-SectorConfig -Sector 'water')
+$script:SectorConfig = Import-SectorConfig -Sector 'water'
+Initialize-WaterConfig -Config $script:SectorConfig
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -439,163 +441,46 @@ try {
     $criticalCount = 0
     $highCount = 0
     $startTime = Get-Date
-    
-    # Runspace script: scans all ports on a single IP and returns findings as objects
-    $scanScript = {
-        param($IP, $Timeout, $RemoteAccessPorts, $CriticalOTPorts, $ThreatContext)
-        
-        $results = @()
-        
-        foreach ($port in $RemoteAccessPorts.Keys) {
-            $tcpClient = $null
-            $open = $false
-            try {
-                $tcpClient = New-Object System.Net.Sockets.TcpClient
-                $ar = $tcpClient.BeginConnect($IP, $port, $null, $null)
-                if ($ar.AsyncWaitHandle.WaitOne($Timeout * 1000)) {
-                    try {
-                        $tcpClient.EndConnect($ar)
-                        $open = $tcpClient.Connected
-                    } catch {
-                        Write-Verbose "EndConnect failed for ${IP}:${port} - $($_.Exception.Message)"
-                    }
-                }
-            } catch {
-                Write-Verbose "Connect failed for ${IP}:${port} - $($_.Exception.Message)"
-            } finally {
-                if ($tcpClient) {
-                    try { $tcpClient.Dispose() } catch {
-                        Write-Verbose "Dispose failed for ${IP}:${port}"
-                    }
-                }
-            }
-            
-            if ($open) {
-                $service = $RemoteAccessPorts[$port]
-                $key = ($service -split '[\s(/]')[0]
-                $ctx = if ($ThreatContext.ContainsKey($key)) { $ThreatContext[$key] } else { "Exposed service — review access controls" }
-                $isCritical = $port -in @(3389, 5900, 5901, 22)
-                $results += [PSCustomObject]@{
-                    IP          = $IP
-                    Port        = $port
-                    Service     = $service
-                    Severity    = if ($isCritical) { "CRITICAL" } else { "HIGH" }
-                    ThreatType  = if ($isCritical) { "Remote Access - Immediate Threat" } else { "Web HMI Exposure" }
-                    ThreatContext = $ctx
-                    Action      = if ($isCritical) { "BLOCK IMMEDIATELY or restrict to VPN only" } else { "Restrict to engineering VLAN; implement MFA" }
-                }
-            }
-        }
-        
-        foreach ($port in $CriticalOTPorts.Keys) {
-            $tcpClient = $null
-            $open = $false
-            try {
-                $tcpClient = New-Object System.Net.Sockets.TcpClient
-                $ar = $tcpClient.BeginConnect($IP, $port, $null, $null)
-                if ($ar.AsyncWaitHandle.WaitOne($Timeout * 1000)) {
-                    try {
-                        $tcpClient.EndConnect($ar)
-                        $open = $tcpClient.Connected
-                    } catch {
-                        Write-Verbose "EndConnect failed for ${IP}:${port} - $($_.Exception.Message)"
-                    }
-                }
-            } catch {
-                Write-Verbose "Connect failed for ${IP}:${port} - $($_.Exception.Message)"
-            } finally {
-                if ($tcpClient) {
-                    try { $tcpClient.Dispose() } catch {
-                        Write-Verbose "Dispose failed for ${IP}:${port}"
-                    }
-                }
-            }
-            
-            if ($open) {
-                $protocol = $CriticalOTPorts[$port]
-                $key = ($protocol -split '[\s(/]')[0]
-                $ctx = if ($ThreatContext.ContainsKey($key)) { $ThreatContext[$key] } else { "OT protocol exposed to network — restrict access" }
-                $results += [PSCustomObject]@{
-                    IP          = $IP
-                    Port        = $port
-                    Service     = $protocol
-                    Severity    = "HIGH"
-                    ThreatType  = "OT Protocol Exposure"
-                    ThreatContext = $ctx
-                    Action      = "Remove from internet; implement firewall rules"
-                }
-            }
-        }
-        
-        return $results
-    }
-    
-    $maxConcurrency = 50   # simultaneous runspaces per subnet
+    $portCatalog = Get-WaterPortCatalogFromConfig -Config $script:SectorConfig
+    $maxConcurrency = 50
+    $timeoutMs = $timeout * 1000
     
     foreach ($subnet in $subnets) {
-        $networkPrefix = Get-NetworkPrefix -Subnet $subnet
         $subnetStartTime = Get-Date
         $subnetFindings = 0
+        $subnetCollected = [System.Collections.Generic.List[pscustomobject]]::new()
         
         Show-ScanHeader -Subnet $subnet -StartTime $subnetStartTime
         
-        # Build runspace pool
-        $pool = [RunspaceFactory]::CreateRunspacePool(1, $maxConcurrency)
-        $pool.Open()
-        
-        # Dispatch one runspace per host
-        $jobs = [System.Collections.Generic.List[hashtable]]::new()
-        for ($i = 1; $i -le 254; $i++) {
-            $ip = "$networkPrefix.$i"
-            $ps = [PowerShell]::Create()
-            $ps.RunspacePool = $pool
-            [void]$ps.AddScript($scanScript)
-            [void]$ps.AddArgument($ip)
-            [void]$ps.AddArgument($timeout)
-            [void]$ps.AddArgument($RemoteAccessPorts)
-            [void]$ps.AddArgument($CriticalOTPorts)
-            [void]$ps.AddArgument($ThreatContext)
-            $jobs.Add(@{ PS = $ps; Handle = $ps.BeginInvoke(); IP = $ip })
-        }
-        
-        # Collect results as they complete; show progress
-        $completed = 0
-        while ($completed -lt $jobs.Count) {
-            $done = $jobs | Where-Object { $_.Handle.IsCompleted }
-            foreach ($job in $done) {
-                $ipResults = $job.PS.EndInvoke($job.Handle)
-                $job.PS.Dispose()
-                $jobs.Remove($job)
-                $completed++
-                $totalScanned++
-                
-                if ($completed % 25 -eq 0) {
-                    Show-ScanProgress -Current $completed -Total 254 -StartTime $subnetStartTime
-                }
-                
-                foreach ($r in $ipResults) {
-                    if ($r.Severity -eq "CRITICAL") {
-                        Write-Host "  [!!! CRITICAL !!!] $($r.IP):$($r.Port) - $($r.Service)" -ForegroundColor Red
-                        Write-Host "      $($r.ThreatContext)" -ForegroundColor Red
-                        Write-Host "      Action: $($r.Action)" -ForegroundColor Yellow
-                        $criticalCount++
-                    } else {
-                        $color = if ($r.ThreatType -eq "OT Protocol Exposure") { "Magenta" } else { "Yellow" }
-                        Write-Host "  [!! HIGH !!] $($r.IP):$($r.Port) - $($r.Service)" -ForegroundColor $color
-                        Write-Host "      $($r.ThreatContext)" -ForegroundColor $color
-                        Write-Host "      Action: $($r.Action)" -ForegroundColor DarkYellow
-                        $highCount++
-                    }
-                    $findings += $r
-                    $subnetFindings++
-                }
+        $targets = Get-SubnetHosts -CidrSubnet $subnet
+        $null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutMs $timeoutMs -Threads $maxConcurrency -OnFinding {
+            param($Finding)
+            $subnetCollected.Add($Finding)
+        } -OnProgress {
+            param($TargetHost, $Processed, $Total)
+            if ($Processed % 25 -eq 0) {
+                Show-ScanProgress -Current $Processed -Total $Total -StartTime $subnetStartTime
             }
-            if ($jobs.Count -gt 0) { Start-Sleep -Milliseconds 100 }
         }
-        
-        $pool.Close()
-        $pool.Dispose()
-        
+
+        foreach ($r in ($subnetCollected | Sort-Object Host, Port)) {
+            if ($r.Severity -eq 'CRITICAL') {
+                Write-Host "  [!!! CRITICAL !!!] $($r.Host):$($r.Port) - $($r.Service)" -ForegroundColor Red
+                Write-Host "      $($r.Description)" -ForegroundColor Red
+                Write-Host "      Action: $($r.Remediation)" -ForegroundColor Yellow
+                $criticalCount++
+            } else {
+                $color = if ($r.Category -eq 'OT Protocol Exposure') { 'Magenta' } else { 'Yellow' }
+                Write-Host "  [!! HIGH !!] $($r.Host):$($r.Port) - $($r.Service)" -ForegroundColor $color
+                Write-Host "      $($r.Description)" -ForegroundColor $color
+                Write-Host "      Action: $($r.Remediation)" -ForegroundColor DarkYellow
+                $highCount++
+            }
+            $findings += $r
+            $subnetFindings++
+        }
+
+        $totalScanned += $targets.Count
         Show-ScanComplete -StartTime $subnetStartTime -FindingsCount $subnetFindings
     }
     

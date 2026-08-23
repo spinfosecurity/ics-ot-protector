@@ -13,20 +13,57 @@
     pwsh .\scripts\ics-ot-protector.ps1 -Sector rail -Subnets 10.10.20.0/24
 
 .EXAMPLE
-    bash ./scripts/ics-ot-protector.sh scan --sector energy-grid --subnets 192.168.10.0/24
+    pwsh .\scripts\ics-ot-protector.ps1 -Scan -ScanSector energy-grid -Subnets 192.168.10.0/24 -CveOnly
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Sector')]
 param(
-    [Parameter(Mandatory, HelpMessage = 'Sector scanner to run: water, energy-grid, bas, or rail')]
+    [Parameter(ParameterSetName = 'Sector', Mandatory, HelpMessage = 'Sector scanner to run: water, energy-grid, bas, or rail')]
     [ValidateSet('water', 'energy-grid', 'bas', 'rail')]
     [string]$Sector,
 
-    [Parameter(ValueFromRemainingArguments = $true)]
+    [Parameter(ParameterSetName = 'Scan', Mandatory)]
+    [switch]$Scan,
+
+    [Parameter(ParameterSetName = 'Scan', Mandatory)]
+    [ValidateSet('water', 'energy-grid', 'bas', 'rail')]
+    [string]$ScanSector,
+
+    [Parameter(ParameterSetName = 'Scan', Mandatory)]
+    [string[]]$Subnets,
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [ValidateRange(1, 512)]
+    [int]$Threads = 64,
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [ValidateRange(100, 10000)]
+    [int]$TimeoutMs = 1500,
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [string]$OutputDir = './reports',
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [switch]$CveOnly,
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [switch]$EotHotOnly,
+
+    [Parameter(ParameterSetName = 'Sector', ValueFromRemainingArguments = $true)]
     [object[]]$RemainingArgs
 )
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
+
+if ($Scan) {
+    $runner = Join-Path $Root 'scanners' '_shared' 'Run-SectorScan.ps1'
+    if (-not (Test-Path -LiteralPath $runner)) {
+        throw "Scan runner not found: $runner"
+    }
+    & $runner -Sector $ScanSector -Subnets $Subnets -Threads $Threads -TimeoutMs $TimeoutMs `
+        -OutputDir $OutputDir -CveOnly:$CveOnly -EotHotOnly:$EotHotOnly
+    return
+}
 
 $Scanner = switch ($Sector) {
     'water'       { Join-Path $Root 'scanners' 'water' 'powershell' 'WUP-WUP.ps1' }

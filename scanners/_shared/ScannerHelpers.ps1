@@ -66,10 +66,11 @@ function Get-RailPortCatalogFromConfig {
     $entries = @($Config.port_catalog | ForEach-Object {
         [PSCustomObject]@{
             Port        = [int]$_.port
-            Name        = $_.name
+            Service     = $_.name
             Severity    = $_.severity
             Category    = $_.category
             Description = $_.description
+            Remediation = ''
         }
     })
     if ($FastEotHot) {

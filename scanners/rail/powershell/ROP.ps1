@@ -58,10 +58,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
-. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
-. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
-Initialize-RailConfig -Config (Import-SectorConfig -Sector 'rail')
+$SharedRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $SharedRoot '_shared' 'Import-SectorConfig.ps1')
+. (Join-Path $SharedRoot '_shared' 'ScannerHelpers.ps1')
+. (Join-Path $SharedRoot '_shared' 'ScanEngine.ps1')
+. (Join-Path $SharedRoot '_shared' 'Export-ScanReport.ps1')
+$script:SectorConfig = Import-SectorConfig -Sector 'rail'
+Initialize-RailConfig -Config $script:SectorConfig
 
 # ---------------------------------------------------------------------------
 # Thread-safe findings collection
@@ -83,34 +86,10 @@ function Write-Log {
 }
 
 # ---------------------------------------------------------------------------
-# Port catalog
-# ---------------------------------------------------------------------------
-function Get-PortCatalog {
-    param([switch]$FastEotHot)
-    Get-RailPortCatalog -FastEotHot:$FastEotHot
-}
-
-# ---------------------------------------------------------------------------
-# TCP probe (non-blocking async connect)
-# ---------------------------------------------------------------------------
-function Test-TcpPort {
-    param([string]$TargetHost, [int]$Port, [int]$Timeout)
-    $client = [System.Net.Sockets.TcpClient]::new()
-    try {
-        $ar = $client.BeginConnect($TargetHost, $Port, $null, $null)
-        if (-not $ar.AsyncWaitHandle.WaitOne($Timeout, $false)) { return $false }
-        $client.EndConnect($ar)
-        return $true
-    } catch { return $false }
-    finally { $client.Dispose() }
-}
-
-# ---------------------------------------------------------------------------
 # Main (skipped when $ROP_TEST_MODE is set before dot-sourcing)
 # ---------------------------------------------------------------------------
 if ($ROP_TEST_MODE -or $global:ROP_TEST_MODE) { return }
 
-# Validate and resolve output directory
 if (-not (Test-Path -LiteralPath $OutputDir)) {
     try {
         New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
@@ -121,105 +100,46 @@ if (-not (Test-Path -LiteralPath $OutputDir)) {
     }
 }
 
-# Build target list
-$allTargets = New-Object System.Collections.Generic.List[string]
-foreach ($subnet in $Subnets) {
-    $subnet = $subnet.Trim()
-    try {
-        $ips = ConvertTo-IpRange -Cidr $subnet
-        foreach ($ip in $ips) { $allTargets.Add($ip) }
-        Write-Log "Resolved $($ips.Count) hosts from $subnet"
-    } catch {
-        Write-Log "Skipping invalid subnet '$subnet': $_" -Level WARN
-    }
-}
-
-$targets = @($allTargets | Sort-Object -Unique)
+$targets = Build-ScanTargets -Subnets $Subnets
 if ($targets.Count -eq 0) {
     Write-Log 'No valid scan targets were generated. Check subnet input.' -Level ERROR
     exit 1
 }
 
-$portCatalog = @(Get-PortCatalog -FastEotHot:$EotHotOnly)
+foreach ($subnet in $Subnets) {
+    $trimmed = $subnet.Trim()
+    if ($trimmed) {
+        Write-Log "Resolved targets from $trimmed"
+    }
+}
+
+$portCatalog = Get-RailPortCatalogFromConfig -Config $script:SectorConfig -FastEotHot:$EotHotOnly
 Write-Log "Scan starting | Targets: $($targets.Count) | Ports: $($portCatalog.Count) | Threads: $Threads | Timeout: ${TimeoutMs}ms | EotHotOnly: $($EotHotOnly.IsPresent)"
 
-# Runspace pool setup
-$pool = [RunspaceFactory]::CreateRunspacePool(1, $Threads)
-$pool.Open()
-$jobs  = New-Object System.Collections.Generic.List[pscustomobject]
-
-$scanScript = {
-    param($TargetHost, $PortCatalog, $TimeoutMs)
-
-    function Test-TcpPortLocal {
-        param([string]$H, [int]$P, [int]$T)
-        $c = [System.Net.Sockets.TcpClient]::new()
-        try {
-            $ar = $c.BeginConnect($H, $P, $null, $null)
-            if (-not $ar.AsyncWaitHandle.WaitOne($T, $false)) { return $false }
-            $c.EndConnect($ar); return $true
-        } catch { return $false } finally { $c.Dispose() }
-    }
-
-    $hits = @()
-    foreach ($entry in $PortCatalog) {
-        if (Test-TcpPortLocal -H $TargetHost -P $entry.Port -T $TimeoutMs) {
-            $hits += [pscustomobject]@{
-                Timestamp   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
-                Host        = $TargetHost
-                Port        = $entry.Port
-                Service     = $entry.Name
-                Severity    = $entry.Severity
-                Category    = $entry.Category
-                Description = $entry.Description
-            }
-        }
-    }
-    return $hits
-}
-
-# Queue all jobs
-foreach ($target in $targets) {
-    $ps = [PowerShell]::Create()
-    $ps.RunspacePool = $pool
-    [void]$ps.AddScript($scanScript).AddArgument($target).AddArgument($portCatalog).AddArgument($TimeoutMs)
-    $handle = $ps.BeginInvoke()
-    $jobs.Add([pscustomobject]@{ PS = $ps; Handle = $handle; Host = $target })
-}
-
-# Collect results with progress
-$done = 0
-foreach ($job in $jobs) {
-    $results = $job.PS.EndInvoke($job.Handle)
-    foreach ($r in $results) {
-        $script:Findings.Add($r)
-        $color = switch ($r.Severity) { 'CRITICAL' { 'Red' } 'HIGH' { 'Yellow' } default { 'White' } }
-        Write-Host ("[{0}] [{1}] {2}:{3}  {4}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $r.Severity.PadRight(8), $r.Host, $r.Port, $r.Description) -ForegroundColor $color
-    }
-    if ($job.PS.HadErrors) {
-        foreach ($err in $job.PS.Streams.Error) { Write-Log "Runspace error on $($job.Host): $err" -Level WARN }
-    }
-    $job.PS.Dispose()
-    $done++
+$null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutMs $TimeoutMs -Threads $Threads -OnFinding {
+    param($Finding)
+    $script:Findings.Add($Finding)
+    $color = switch ($Finding.Severity) { 'CRITICAL' { 'Red' } 'HIGH' { 'Yellow' } default { 'White' } }
+    Write-Host ("[{0}] [{1}] {2}:{3}  {4}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Finding.Severity.PadRight(8), $Finding.Host, $Finding.Port, $Finding.Description) -ForegroundColor $color
+} -OnProgress {
+    param($TargetHost, $Processed, $Total)
     Write-Progress -Activity 'Rail-OT-Protector Scanning' `
-        -Status "Hosts processed: $done / $($targets.Count)" `
-        -PercentComplete ([math]::Round(($done / $targets.Count) * 100, 0))
+        -Status "Hosts processed: $Processed / $Total" `
+        -PercentComplete ([math]::Round(($Processed / $Total) * 100, 0))
 }
 
-$pool.Close(); $pool.Dispose()
 Write-Progress -Activity 'Rail-OT-Protector Scanning' -Completed
 
-# Write reports
 $exportPaths = Export-ScanReport -Findings @($script:Findings.ToArray()) -OutputDir $OutputDir -Prefix 'ROP-results' `
     -Metadata @{
-        sector      = 'rail'
-        scanner     = 'Rail-OT-Protector'
-        version     = '1.0.0'
-        subnets     = ($Subnets -join ',')
-        timeout_ms  = $TimeoutMs
-        threads     = $Threads
+        sector       = 'rail'
+        scanner      = 'Rail-OT-Protector'
+        version      = '1.0.0'
+        subnets      = ($Subnets -join ',')
+        timeout_ms   = $TimeoutMs
+        threads      = $Threads
         eot_hot_only = [bool]$EotHotOnly
-        reference   = 'CISA AA26-097A, FBI PSA 2026-08-01'
+        reference    = 'CISA AA26-097A, FBI PSA 2026-08-01'
     }
 
 Write-Log "Scan complete | Findings: $($script:Findings.Count) | Report: $($exportPaths.ReportPath)"

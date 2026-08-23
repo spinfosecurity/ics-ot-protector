@@ -15,7 +15,7 @@ Describe 'Shared sector configs' {
         $cfg = Import-SectorConfig -Sector 'energy-grid'
         @($cfg.cve_checks.PSObject.Properties).Count | Should -Be 4
         $cfg.remote_access_ports.Count | Should -Be 8
-        $cfg.ics_ports.Count | Should -Be 6
+        $cfg.ics_ports.Count | Should -Be 9
     }
 
     It 'loads bas config with vendor alerts' {

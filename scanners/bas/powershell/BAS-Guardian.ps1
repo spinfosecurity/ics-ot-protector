@@ -4,8 +4,10 @@
 
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Import-SectorConfig.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScannerHelpers.ps1')
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'ScanEngine.ps1')
 . (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '_shared' 'Export-ScanReport.ps1')
-Initialize-BasConfig -Config (Import-SectorConfig -Sector 'bas')
+$script:SectorConfig = Import-SectorConfig -Sector 'bas'
+Initialize-BasConfig -Config $script:SectorConfig
 
 function Show-Intro {
     Clear-Host
@@ -201,81 +203,48 @@ $script:TotalScanned = 0
 $script:CriticalCount = 0
 $script:HighCount = 0
 $startTime = Get-Date
+$portCatalog = Get-BasPortCatalogFromConfig -Config $script:SectorConfig
 
 foreach ($subnet in $script:Subnets) {
-    $prefix = Get-NetworkPrefix $subnet
     Write-Host "`n[SCAN] $subnet" -ForegroundColor Cyan
     $subnetStart = Get-Date
-    $subnetFindings = 0
+    $subnetFindingsBefore = $script:Findings.Count
 
-    for ($i = 1; $i -le 254; $i++) {
-        $ip = "$prefix.$i"
-        $script:TotalScanned++
+    $targets = Get-SubnetHosts -CidrSubnet $subnet
+    $null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutMs $script:TimeoutMs -Threads 1 -OnFinding {
+        param($Finding)
+        $script:Findings += $Finding
 
-        if ($i % 50 -eq 0) {
-            Write-Host "  Progress: $i/254" -ForegroundColor DarkGray
-        }
-
-        foreach ($port in $RemoteAccessPorts.Keys) {
-            if (Test-Port -IP $ip -Port $port -TimeoutMs $script:TimeoutMs) {
-                $service = $RemoteAccessPorts[$port]
-                $key = $service.Split(' ')[0]
-                $threat = $ThreatContext[$key]
-                if (-not $threat) { $threat = "Remote access point - verify authorization and MFA" }
-
-                if ($port -in @(3389, 5900, 5901, 22)) {
-                    Write-Host "  [CRITICAL] ${ip}:${port} - $service" -ForegroundColor Red
-                    Write-Host "      $threat" -ForegroundColor Red
-                    $script:Findings += [PSCustomObject]@{
-                        IP = $ip; Port = $port; Service = $service; Severity = "CRITICAL"
-                        ThreatContext = $threat; Action = "BLOCK IMMEDIATELY or restrict to VPN only"
-                    }
-                    $script:CriticalCount++
-                } else {
-                    Write-Host "  [HIGH] ${ip}:${port} - $service" -ForegroundColor Yellow
-                    if ($port -eq 80) {
-                        Write-Host "      $($ThreatContext['Honeywell'])" -ForegroundColor Yellow
-                    }
-                    $script:Findings += [PSCustomObject]@{
-                        IP = $ip; Port = $port; Service = $service; Severity = "HIGH"
-                        ThreatContext = $threat; Action = "Restrict to management VLAN; implement MFA; verify auth is enabled"
-                    }
-                    $script:HighCount++
-                }
-                $subnetFindings++
+        if ($Finding.Service -like '*BMS Platform*') {
+            $vendor = $Finding.Service -replace ' BMS Platform$', ''
+            Write-Host "  [!!! VENDOR CRITICAL !!!] $($Finding.Host):$($Finding.Port) - $vendor" -ForegroundColor Red
+            Write-Host "      $($Finding.Description)" -ForegroundColor Red
+            $script:CriticalCount++
+        } elseif ($Finding.Severity -eq 'CRITICAL') {
+            Write-Host "  [CRITICAL] $($Finding.Host):$($Finding.Port) - $($Finding.Service)" -ForegroundColor Red
+            Write-Host "      $($Finding.Description)" -ForegroundColor Red
+            $script:CriticalCount++
+        } elseif ($Finding.Service -match 'BACnet|LonWorks|Tridium') {
+            Write-Host "  [BAS] $($Finding.Host):$($Finding.Port) - $($Finding.Service)" -ForegroundColor Magenta
+            $script:HighCount++
+        } else {
+            Write-Host "  [HIGH] $($Finding.Host):$($Finding.Port) - $($Finding.Service)" -ForegroundColor Yellow
+            if ($Finding.Port -eq 80) {
+                Write-Host "      $($ThreatContext['Honeywell'])" -ForegroundColor Yellow
+            } else {
+                Write-Host "      $($Finding.Description)" -ForegroundColor Yellow
             }
+            $script:HighCount++
         }
-
-        foreach ($port in $CriticalBASPorts.Keys) {
-            if (Test-Port -IP $ip -Port $port -TimeoutMs $script:TimeoutMs) {
-                $protocol = $CriticalBASPorts[$port]
-                Write-Host "  [BAS] ${ip}:${port} - $protocol" -ForegroundColor Magenta
-                $threatKey = $protocol.Split(' ')[0]
-                $threat = $ThreatContext[$threatKey]
-                $script:Findings += [PSCustomObject]@{
-                    IP = $ip; Port = $port; Service = $protocol; Severity = "HIGH"
-                    ThreatContext = $threat; Action = "Remove from internet; segment from IT network; patch bacnet-stack"
-                }
-                $script:HighCount++
-                $subnetFindings++
-            }
-        }
-
-        foreach ($alert in $VendorAlerts) {
-            if (Test-Port -IP $ip -Port $alert.Port -TimeoutMs $script:TimeoutMs) {
-                Write-Host "  [!!! VENDOR CRITICAL !!!] ${ip}:$($alert.Port) - $($alert.Vendor)" -ForegroundColor Red
-                Write-Host "      $($alert.CVE) (CVSS: $($alert.CVSS))" -ForegroundColor Red
-                Write-Host "      $($alert.Description)" -ForegroundColor Red
-                $script:Findings += [PSCustomObject]@{
-                    IP = $ip; Port = $alert.Port; Service = "$($alert.Vendor) BMS Platform"; Severity = "CRITICAL"
-                    ThreatContext = "$($alert.CVE) - $($alert.Description)"; Action = $alert.Action
-                }
-                $script:CriticalCount++
-                $subnetFindings++
-            }
+    } -OnProgress {
+        param($TargetHost, $Processed, $Total)
+        if ($Processed % 50 -eq 0) {
+            Write-Host "  Progress: $Processed/$Total" -ForegroundColor DarkGray
         }
     }
 
+    $script:TotalScanned += $targets.Count
+    $subnetFindings = $script:Findings.Count - $subnetFindingsBefore
     $subnetDuration = [math]::Round(((Get-Date) - $subnetStart).TotalSeconds, 1)
     Write-Host "  [COMPLETE] $subnetFindings findings in ${subnetDuration}s" -ForegroundColor Green
 }

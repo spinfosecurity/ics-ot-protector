@@ -69,8 +69,10 @@ $ErrorActionPreference = 'Stop'
 $SharedRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 . (Join-Path $SharedRoot '_shared' 'Import-SectorConfig.ps1')
 . (Join-Path $SharedRoot '_shared' 'ScannerHelpers.ps1')
+. (Join-Path $SharedRoot '_shared' 'ScanEngine.ps1')
 . (Join-Path $SharedRoot '_shared' 'Export-ScanReport.ps1')
-Initialize-EnergyGridConfig -Config (Import-SectorConfig -Sector 'energy-grid')
+$script:SectorConfig = Import-SectorConfig -Sector 'energy-grid'
+Initialize-EnergyGridConfig -Config $script:SectorConfig
 
 $script:ScanFindings = [System.Collections.Generic.List[pscustomobject]]::new()
 
@@ -90,66 +92,22 @@ function Show-Banner {
 }
 
 # ---------------------------------------------------------------------------
-# TCP port test
-# ---------------------------------------------------------------------------
-function Test-TcpPort {
-    [OutputType([bool])]
-    param (
-        [string]$IpAddress,
-        [int]$Port,
-        [int]$TimeoutMilliseconds
-    )
-    $client = [System.Net.Sockets.TcpClient]::new()
-    try {
-        $task = $client.ConnectAsync($IpAddress, $Port)
-        $connected = $task.Wait($TimeoutMilliseconds)
-        return $connected -and $client.Connected
-    } catch {
-        return $false
-    } finally {
-        $client.Dispose()
-    }
-}
-
-# ---------------------------------------------------------------------------
-# CVE / port definitions loaded from config/sectors/energy-grid.yaml
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # Write finding to report and console
 # ---------------------------------------------------------------------------
 function Write-Finding {
     param (
-        [string]$IpAddress,
-        [int]$Port,
-        [string]$FindingLabel,
-        [string]$Severity,
-        [string]$Description,
-        [string]$Remediation
+        [Parameter(Mandatory)]
+        $Finding
     )
-    $timestamp = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
-    $category = if ($FindingLabel -match '^CVE-') { 'CVE' }
-                elseif ($FindingLabel -match '^REMOTE-ACCESS:') { 'RemoteAccess' }
-                elseif ($FindingLabel -match '^ICS-PROTOCOL:') { 'ICS' }
-                else { 'General' }
 
-    $script:ScanFindings.Add([pscustomobject]@{
-        Timestamp   = $timestamp
-        Host        = $IpAddress
-        Port        = $Port
-        Service     = $FindingLabel
-        Severity    = $Severity
-        Category    = $category
-        Description = $Description
-        Remediation = $Remediation
-    })
+    $script:ScanFindings.Add($Finding)
 
-    $color = Get-SeverityColor $Severity
+    $color = Get-SeverityColor $Finding.Severity
 
-    Write-Host "  [$Severity] " -ForegroundColor $color -NoNewline
-    Write-Host "$IpAddress`:$Port" -ForegroundColor White -NoNewline
-    Write-Host " - $FindingLabel" -ForegroundColor $color
-    Write-Host "    $Description" -ForegroundColor Gray
+    Write-Host "  [$($Finding.Severity)] " -ForegroundColor $color -NoNewline
+    Write-Host "$($Finding.Host):$($Finding.Port)" -ForegroundColor White -NoNewline
+    Write-Host " - $($Finding.Service)" -ForegroundColor $color
+    Write-Host "    $($Finding.Description)" -ForegroundColor Gray
 }
 
 # ---------------------------------------------------------------------------
@@ -184,75 +142,25 @@ try {
     exit 1
 }
 
-$totalHosts   = $hosts.Count
-$findings     = 0
-$hostsScanned = 0
+$portCatalog = Get-EnergyGridPortCatalogFromConfig -Config $script:SectorConfig -CveOnly:$CveOnly
+$script:findingsCount = 0
 
-# Deduplication set: tracks "IP:port" strings already reported
-$seenFindings = [System.Collections.Generic.HashSet[string]]::new()
-
-foreach ($ip in $hosts) {
-    $hostsScanned++
-    $pct = [math]::Round(($hostsScanned / $totalHosts) * 100, 1)
-    Write-Progress -Activity "EGP Scanning $Subnet" `
-        -Status "[$hostsScanned/$totalHosts] Scanning $ip ($pct%)" `
-        -PercentComplete $pct
-
-    # --- CVE Checks ---
-    foreach ($cveId in $CveChecks.Keys) {
-        $cve = $CveChecks[$cveId]
-        foreach ($port in $cve.Ports) {
-            $key = "${ip}:${port}"
-            if (-not $seenFindings.Contains($key) -and
-                (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs)) {
-                [void]$seenFindings.Add($key)
-                Write-Finding `
-                    -IpAddress $ip -Port $port `
-                    -FindingLabel $cveId `
-                    -Severity $cve.Severity `
-                    -Description $cve.Description `
-                    -Remediation $cve.Remediation
-                $findings++
-            }
-        }
+Invoke-TcpPortScan -Targets $hosts -PortCatalog $portCatalog -TimeoutMs $TimeoutMs -Threads 1 `
+    -OnProgress {
+        param($TargetHost, $Processed, $Total)
+        $pct = [math]::Round(($Processed / $Total) * 100, 1)
+        Write-Progress -Activity "EGP Scanning $Subnet" `
+            -Status "[$Processed/$Total] Scanning $TargetHost ($pct%)" `
+            -PercentComplete $pct
+    } `
+    -OnFinding {
+        param($Finding)
+        Write-Finding -Finding $Finding
+        $script:findingsCount++
     }
 
-    if (-not $CveOnly) {
-        # --- Remote Access Checks ---
-        foreach ($port in $RemoteAccessPorts.Keys) {
-            $key = "${ip}:${port}"
-            if (-not $seenFindings.Contains($key) -and
-                (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs)) {
-                [void]$seenFindings.Add($key)
-                $ra = $RemoteAccessPorts[$port]
-                Write-Finding `
-                    -IpAddress $ip -Port $port `
-                    -FindingLabel "REMOTE-ACCESS:$($ra.Name)" `
-                    -Severity $ra.Severity `
-                    -Description $ra.Description `
-                    -Remediation 'See docs/CISA-Reference.md for hardening guidance'
-                $findings++
-            }
-        }
-
-        # --- ICS Protocol Checks ---
-        foreach ($port in $IcsPorts.Keys) {
-            $key = "${ip}:${port}"
-            if (-not $seenFindings.Contains($key) -and
-                (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs)) {
-                [void]$seenFindings.Add($key)
-                $ics = $IcsPorts[$port]
-                Write-Finding `
-                    -IpAddress $ip -Port $port `
-                    -FindingLabel "ICS-PROTOCOL:$($ics.Name)" `
-                    -Severity $ics.Severity `
-                    -Description $ics.Description `
-                    -Remediation 'See docs/Threat-Intelligence.md for ICS protocol hardening'
-                $findings++
-            }
-        }
-    }
-}
+$findings = $script:findingsCount
+$hostsScanned = $hosts.Count
 
 Write-Progress -Activity "EGP Scanning $Subnet" -Completed
 
