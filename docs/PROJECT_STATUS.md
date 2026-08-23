@@ -1,70 +1,38 @@
 # Project status
 
-**Last updated:** 2026-08-23  
-**Current release:** [v4.4.0](releases/v4.4.0.md)  
-**Portfolio:** [spinfosecurity.github.io](https://spinfosecurity.github.io)
+Last updated: 2026-08-23  
+Release: [v4.4.1](releases/v4.4.1.md)  
+Site: [spinfosecurity.github.io](https://spinfosecurity.github.io)
 
-This document is a handoff summary for anyone picking up the project later.
+Notes for picking this back up later.
 
----
+## Recent releases
 
-## What shipped (v4.2 → v4.4)
+- **v4.4.x** — remediation metadata on findings, offline report review CLI, hiring/portfolio docs
+- **v4.3.x** — `--config` overlays, scan progress, WUP/BAS parity with scan mode
+- **v4.2.x** — shared scan engine, preflight, JSON summary + CSV export
 
-| Version | Focus |
-|---------|--------|
-| **v4.2.0** | Shared Bash/PowerShell scan engine, preflight, `metadata.summary`, CSV export, integration tests |
-| **v4.3.0** | `--config` YAML overlays, scan progress/ETA, interactive WUP/BAS parity |
-| **v4.4.0** | Remediation metadata, extended summaries, offline report-review CLI |
+## Public-facing stuff
 
----
+Portfolio source is in `portfolio-site/`. Employer-facing write-up: [for-employers.md](for-employers.md). Publish changes with `scripts/sync-portfolio-site.sh` or the deploy workflow (see [github-credibility-setup.md](github-credibility-setup.md)).
 
-## Hiring & public presence (complete)
+## Not planned yet
 
-| Asset | Location |
-|-------|----------|
-| Portfolio site (live) | https://spinfosecurity.github.io |
-| Site source mirror | `portfolio-site/` in this repo |
-| Employer review guide | [for-employers.md](for-employers.md) |
-| GitHub setup script | `scripts/setup-github-credibility.sh` |
-| Resume bullet helper | `scripts/resume-bullets-from-report.sh` |
-| Org profile README template | `portfolio-site/GITHUB-PROFILE-README.md` |
+SIEM/ticketing examples, IPv6 scanning, deeper fixture tests for EGP/BAS/rail.
 
-**Deploy portfolio changes:**
-
-```bash
-./scripts/sync-portfolio-site.sh /path/to/spinfosecurity.github.io
-# or add PAGES_DEPLOY_TOKEN and run the Deploy portfolio site workflow
-```
-
----
-
-## Deferred (not started)
-
-- SIEM/ticketing ingestion examples
-- IPv6 scope support
-- Sector-specific fixture tests beyond water behavioral suite
-- SundayStack / other repos (out of scope for this monorepo)
-
----
-
-## Quick verification
+## Smoke test
 
 ```bash
 bash tests/shared/bash/remediation_review_tests.sh
-bash tests/shared/bash/scan_engine_integration_tests.sh
 ./scripts/review_scan_report.sh docs/sample-report.json
 ```
 
-PowerShell (requires `pwsh`):
+With PowerShell installed:
 
 ```powershell
 Invoke-Pester (Get-ChildItem ./tests -Recurse -Filter *.Tests.ps1) -CI
 ```
 
----
+## Day-to-day maintenance
 
-## Maintenance notes
-
-- Sector configs: edit `config/sectors/*.yaml`, run `bash tests/shared/bash/validate_configs.sh`, commit JSON if changed
-- CI: `.github/workflows/ci.yml` on every push/PR
-- Cloud Agent bootstrap: `.cursor/install.sh` + `.cursor/environment.json`
+Edit sector YAML in `config/sectors/`, run `bash tests/shared/bash/validate_configs.sh`, commit JSON if it changed. CI is in `.github/workflows/ci.yml`. Cloud Agent bootstrap: `.cursor/install.sh`.

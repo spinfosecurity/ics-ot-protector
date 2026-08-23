@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# One-shot GitHub credibility setup for job search (Lane B).
-# Run locally as the spinfosecurity account: gh auth login && ./scripts/setup-github-credibility.sh
+# Publish portfolio site, profile README, and related GitHub housekeeping.
+# Run as the repo owner: gh auth login && ./scripts/setup-github-credibility.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -113,7 +113,7 @@ update_profile_readme() {
       gh repo create "${OWNER}/${PROFILE_REPO}" --public --description "GitHub profile README" --clone=false
       gh repo clone "${OWNER}/${PROFILE_REPO}" "$tmp/profile" -- --depth=1
     fi
-    head -n 33 "$src" > "$tmp/profile/README.md"
+    cp "$src" "$tmp/profile/README.md"
     cd "$tmp/profile"
     git add README.md
     if git diff --cached --quiet; then
@@ -164,7 +164,7 @@ EOF
   deploy_portfolio_site
   update_profile_readme
   print_deploy_token_instructions
-  echo "Lane B complete."
+  echo "Done."
 }
 
 main "$@"

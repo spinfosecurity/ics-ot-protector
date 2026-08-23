@@ -4,6 +4,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+### Changed
+- **Documentation tone** — hiring and portfolio docs rewritten for clarity; less template-heavy language
+
 ## [4.4.1] - 2026-08-23
 
 ### Added
