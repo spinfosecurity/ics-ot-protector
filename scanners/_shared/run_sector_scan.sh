@@ -25,6 +25,8 @@ CVE_ONLY=0
 EOT_HOT_ONLY=0
 FORCE_LARGE=0
 EXPORT_CSV=1
+CONFIG_OVERLAY=""
+QUIET=0
 
 usage() {
   cat <<'EOF'
@@ -38,6 +40,7 @@ Required:
   --subnets <CIDRs>     Comma-separated target ranges (e.g. 192.168.10.0/24,10.0.1.0/24)
 
 Optional:
+  --config <path>       YAML/JSON overlay merged onto the sector config
   --threads <n>         Concurrent workers (1-512, default 64)
   --timeout-ms <n>      TCP timeout in ms (100-10000, default 1500)
   --output-dir <dir>    Report directory (default ./reports)
@@ -45,6 +48,7 @@ Optional:
   --eot-hot-only        Rail fast mode: EOT/HOT ports only
   --force               Acknowledge large scan scope (/17-/8 or >4096 hosts)
   --no-csv              Skip CSV export (JSON is always written)
+  --quiet               Suppress progress output
   --help                Show this message
 EOF
 }
@@ -57,6 +61,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --sector)      SECTOR="$2";      shift 2 ;;
     --subnets)     SUBNETS="$2";     shift 2 ;;
+    --config)      CONFIG_OVERLAY="$2"; shift 2 ;;
     --threads)     THREADS="$2";     shift 2 ;;
     --timeout-ms)  TIMEOUT_MS="$2";  shift 2 ;;
     --output-dir)  OUTPUT_DIR="$2";  shift 2 ;;
@@ -64,6 +69,7 @@ while [[ $# -gt 0 ]]; do
     --eot-hot-only) EOT_HOT_ONLY=1;  shift ;;
     --force)       FORCE_LARGE=1;    shift ;;
     --no-csv)      EXPORT_CSV=0;     shift ;;
+    --quiet)       QUIET=1;          shift ;;
     --help|-h)     usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 1 ;;
   esac
@@ -81,6 +87,10 @@ done
 
 preflight_check_dependencies
 preflight_validate_scan_scope "$SUBNETS" "$FORCE_LARGE"
+
+if [[ -n "$CONFIG_OVERLAY" ]]; then
+  export SECTOR_CONFIG_OVERLAY="$CONFIG_OVERLAY"
+fi
 
 case "$SECTOR" in
   water)
@@ -136,10 +146,17 @@ EXTRA_META=$(jq -n \
   --argjson threads "$THREADS" \
   --argjson cve_only "$CVE_ONLY" \
   --argjson eot_hot_only "$EOT_HOT_ONLY" \
-  '{target:$target, timeout_ms:$timeout_ms, threads:$threads, cve_only:$cve_only, eot_hot_only:$eot_hot_only}')
+  --arg config_overlay "${CONFIG_OVERLAY:-}" \
+  '{target:$target, timeout_ms:$timeout_ms, threads:$threads, cve_only:$cve_only, eot_hot_only:$eot_hot_only, config_overlay:$config_overlay}')
 export_scan_report_init "$OUTPUT_DIR" "$REPORT_PREFIX" "$SECTOR" "$SCANNER_NAME" "$EXTRA_META"
 
 log INFO "Scan starting | Sector: $SECTOR | Targets: ${#SCAN_TARGETS[@]} | Ports: ${#PORTS[@]} | Threads: $THREADS | Timeout: ${TIMEOUT_MS}ms"
+
+if (( ! QUIET )); then
+  SCAN_ENGINE_PROGRESS_HOOK=scan_engine_default_progress_hook
+  export SCAN_ENGINE_PROGRESS_HOOK
+fi
+scan_engine_reset_progress
 
 run_tcp_port_scan "$THREADS" "$TIMEOUT_MS"
 

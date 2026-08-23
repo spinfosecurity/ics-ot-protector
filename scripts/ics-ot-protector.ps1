@@ -57,6 +57,12 @@ param(
     [Parameter(ParameterSetName = 'Scan')]
     [switch]$NoCsv,
 
+    [Parameter(ParameterSetName = 'Scan')]
+    [string]$Config,
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [switch]$Quiet,
+
     [Parameter(ParameterSetName = 'Sector', ValueFromRemainingArguments = $true)]
     [object[]]$RemainingArgs
 )
@@ -70,7 +76,8 @@ if ($Scan) {
         throw "Scan runner not found: $runner"
     }
     & $runner -Sector $ScanSector -Subnets $Subnets -Threads $Threads -TimeoutMs $TimeoutMs `
-        -OutputDir $OutputDir -CveOnly:$CveOnly -EotHotOnly:$EotHotOnly -Force:$Force -NoCsv:$NoCsv
+        -OutputDir $OutputDir -CveOnly:$CveOnly -EotHotOnly:$EotHotOnly -Force:$Force -NoCsv:$NoCsv `
+        -Config $Config -Quiet:$Quiet
     return
 }
 

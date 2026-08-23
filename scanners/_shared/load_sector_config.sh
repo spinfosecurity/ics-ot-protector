@@ -20,6 +20,14 @@ _load_config_json() {
     echo "Sector config not found: ${path} (run scripts/config/compile_configs.py)" >&2
     return 1
   fi
+  if [[ -n "${SECTOR_CONFIG_OVERLAY:-}" ]]; then
+    if [[ ! -f "$SECTOR_CONFIG_OVERLAY" ]]; then
+      echo "Config overlay not found: ${SECTOR_CONFIG_OVERLAY}" >&2
+      return 1
+    fi
+    python3 "${root}/scripts/config/merge_overlay.py" "$path" "$SECTOR_CONFIG_OVERLAY"
+    return
+  fi
   python3 - "$path" <<'PY'
 import json, sys
 print(json.dumps(json.load(open(sys.argv[1], encoding='utf-8'))))

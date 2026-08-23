@@ -24,10 +24,12 @@ Scan mode (non-interactive, all sectors):
   --threads <n>         Concurrent workers (default 64)
   --timeout-ms <n>      TCP timeout in ms (default 1500)
   --output-dir <dir>    Report directory (default ./reports)
+  --config <path>       YAML/JSON overlay merged onto sector config
   --cve-only            Energy-grid CVE-only fast mode
   --eot-hot-only        Rail EOT/HOT-only fast mode
   --force               Acknowledge large scan scope (/17-/8 or >4096 hosts)
   --no-csv              Skip CSV export (JSON is always written)
+  --quiet               Suppress progress output during scan
 
 Examples:
   ./scripts/ics-ot-protector.sh water

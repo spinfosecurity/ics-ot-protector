@@ -13,11 +13,24 @@ function Import-SectorConfig {
     param(
         [Parameter(Mandatory)]
         [ValidateSet('water', 'energy-grid', 'bas', 'rail')]
-        [string]$Sector
+        [string]$Sector,
+
+        [string]$ConfigOverlay
     )
     $path = Join-Path (Get-RepoRoot) 'config' 'sectors' "$Sector.json"
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Sector config not found: $path (run scripts/config/compile_configs.py)"
+    }
+    if ($ConfigOverlay) {
+        if (-not (Test-Path -LiteralPath $ConfigOverlay)) {
+            throw "Config overlay not found: $ConfigOverlay"
+        }
+        $mergeScript = Join-Path (Get-RepoRoot) 'scripts' 'config' 'merge_overlay.py'
+        $mergedJson = & python3 $mergeScript $path $ConfigOverlay
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to merge config overlay: $ConfigOverlay"
+        }
+        return ($mergedJson | ConvertFrom-Json)
     }
     return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
 }

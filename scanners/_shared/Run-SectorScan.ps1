@@ -23,7 +23,11 @@ param(
     [switch]$CveOnly,
     [switch]$EotHotOnly,
     [switch]$Force,
-    [switch]$NoCsv
+    [switch]$NoCsv,
+
+    [string]$Config,
+
+    [switch]$Quiet
 )
 
 Set-StrictMode -Version Latest
@@ -37,9 +41,10 @@ $SharedRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $SharedRoot '_shared' 'Export-ScanReport.ps1')
 
 $scope = Confirm-ScanScope -Subnets $Subnets -Force:$Force
-$config = Import-SectorConfig -Sector $Sector
+$config = Import-SectorConfig -Sector $Sector -ConfigOverlay:$Config
 $findings = [System.Collections.Concurrent.ConcurrentBag[pscustomobject]]::new()
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+$progressStart = Get-Date
 
 switch ($Sector) {
     'water' {
@@ -81,12 +86,25 @@ if (-not (Test-Path -LiteralPath $OutputDir)) {
 Write-Host ("[{0}] [INFO] Scan starting | Sector: {1} | Targets: {2} | Ports: {3} | Threads: {4} | Timeout: {5}ms" -f `
     (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Sector, $targets.Count, $portCatalog.Count, $Threads, $TimeoutMs)
 
-$null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutMs $TimeoutMs -Threads $Threads -OnFinding {
-    param($Finding)
-    $findings.Add($Finding)
-    $color = switch ($Finding.Severity) { 'CRITICAL' { 'Red' } 'HIGH' { 'Yellow' } default { 'White' } }
-    Write-Host ("[{0}] [{1}] {2}:{3}  {4}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Finding.Severity, $Finding.Host, $Finding.Port, $Finding.Description) -ForegroundColor $color
+$scanParams = @{
+    Targets     = $targets
+    PortCatalog = $portCatalog
+    TimeoutMs   = $TimeoutMs
+    Threads     = $Threads
+    OnFinding   = {
+        param($Finding)
+        $findings.Add($Finding)
+        $color = switch ($Finding.Severity) { 'CRITICAL' { 'Red' } 'HIGH' { 'Yellow' } default { 'White' } }
+        Write-Host ("[{0}] [{1}] {2}:{3}  {4}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Finding.Severity, $Finding.Host, $Finding.Port, $Finding.Description) -ForegroundColor $color
+    }
 }
+if (-not $Quiet) {
+    $scanParams['OnProgress'] = {
+        param($TargetHost, $Processed, $Total)
+        Write-ScanEngineProgress -TargetHost $TargetHost -Processed $Processed -Total $Total -StartTime $progressStart
+    }
+}
+$null = Invoke-TcpPortScan @scanParams
 
 $stopwatch.Stop()
 
@@ -99,6 +117,7 @@ $export = Export-ScanReport -Findings @($findings.ToArray()) -OutputDir $OutputD
         threads      = $Threads
         cve_only     = [bool]$CveOnly
         eot_hot_only = [bool]$EotHotOnly
+        config_overlay = $(if ($Config) { $Config } else { '' })
     } `
     -HostsScanned $targets.Count -PortsChecked $portCatalog.Count -DurationMs $stopwatch.ElapsedMilliseconds `
     -ExportCsv:(-not $NoCsv)

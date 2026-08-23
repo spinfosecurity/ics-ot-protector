@@ -45,6 +45,8 @@ source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
 # shellcheck source=../_shared/scan_engine.sh
 source "${REPO_ROOT}/scanners/_shared/scan_engine.sh"
+# shellcheck source=../_shared/preflight.sh
+source "${REPO_ROOT}/scanners/_shared/preflight.sh"
 initialize_water_config
 
 # ---------------------------------------------------------------------------- #
@@ -306,6 +308,12 @@ confirm_scan() {
         sleep 2
         exit 0
     fi
+
+    local subnets_csv
+    subnets_csv=$(IFS=,; echo "${SUBNETS[*]}")
+    preflight_check_dependencies
+    preflight_validate_scan_scope "$subnets_csv" 0
+    preflight_print_summary "water" "$(( ${#REMOTE_ACCESS_PORTS[@]} + ${#OT_PROTOCOL_PORTS[@]} ))" 50 "$((TIMEOUT * 1000))"
 }
 
 # ---------------------------------------------------------------------------- #
@@ -336,7 +344,9 @@ generate_report() {
             '$arr + [{Timestamp:$ts, Host:$host, Port:$port, Service:$service, Severity:$severity, Category:$category, Description:$description, Remediation:$remediation}]')
     done
 
-    export_scan_report_write "$report_dir" "WUP-results" "water" "WUP WUP" "$findings_json"
+    build_water_port_catalog
+    export_scan_report_write "$report_dir" "WUP-results" "water" "WUP WUP" "$findings_json" \
+        "$TOTAL_SCANNED" "${#PORTS[@]}" "$((SCAN_DURATION * 1000))" 1
 }
 
 # Collect or store a finding in legacy pipe-delimited format.
@@ -416,6 +426,8 @@ main() {
     local max_workers=50
     build_water_port_catalog
     SCAN_ENGINE_FINDING_HOOK=wup_finding_hook
+    SCAN_ENGINE_PROGRESS_HOOK=scan_engine_default_progress_hook
+    export SCAN_ENGINE_FINDING_HOOK SCAN_ENGINE_PROGRESS_HOOK
 
     for subnet in "${SUBNETS[@]}"; do
         local subnet_start_epoch
@@ -424,6 +436,7 @@ main() {
 
         show_scan_header "$subnet"
 
+        scan_engine_reset_progress
         build_scan_targets "$subnet"
         SCAN_TARGETS=("${SCAN_TARGETS[@]}")
         run_tcp_port_scan "$max_workers" $((TIMEOUT * 1000))
