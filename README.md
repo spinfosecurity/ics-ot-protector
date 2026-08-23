@@ -1,26 +1,19 @@
 # ICS OT Protector — Unified Critical Infrastructure Scanner Portfolio
 
-**For employers:** [5-minute code review guide](docs/for-employers.md) · [Portfolio site](https://spinfosecurity.github.io) · **Release:** [v4.4.1](docs/releases/v4.4.1.md) · [Project status](docs/PROJECT_STATUS.md)
+**Portfolio:** [spinfosecurity.github.io](https://spinfosecurity.github.io) · **Reviewing for a role?** [Start here](docs/for-employers.md) · **Release:** [v4.4.1](docs/releases/v4.4.1.md)
 
 **ICS OT Protector** is a free, open-source collection of sector-specific OT/SCADA cybersecurity scanners. Each scanner targets the protocols, vendor CVEs, and attack patterns relevant to its critical infrastructure sector — all from a single monorepo with shared governance, CI, and safety documentation.
 
 Previously distributed as four separate repositories, all scanners now live here:
 
-| Sector | Scanner | Monorepo integration | Platforms |
-|--------|---------|----------------------|-----------|
-| Water & Wastewater | [WUP WUP](scanners/water/) | Shared engine, interactive + scan mode | PowerShell + Bash |
-| Power Grid & Substation | [Energy Grid Protector (EGP)](scanners/energy-grid/) | Shared engine, CLI + scan mode | PowerShell + Bash |
-| Building Automation (BAS) | [BAS Guardian](scanners/bas/) | Shared engine, interactive + scan mode | PowerShell + Bash |
-| Rail & Transit | [Rail-OT-Protector (ROP)](scanners/rail/) | Shared engine, CLI + scan mode | PowerShell + Bash |
+| Sector | Scanner | Notes |
+|--------|---------|-------|
+| Water & Wastewater | [WUP WUP](scanners/water/) | Interactive + scan mode |
+| Power Grid & Substation | [EGP](scanners/energy-grid/) | CLI + scan mode |
+| Building Automation | [BAS Guardian](scanners/bas/) | Interactive + scan mode |
+| Rail & Transit | [ROP](scanners/rail/) | CLI + scan mode |
 
-### Engineering highlights (for reviewers)
-
-| Area | Evidence |
-|------|----------|
-| Shared scan pipeline | `scanners/_shared/` — engine, preflight, export, remediation metadata |
-| CI & tests | `.github/workflows/ci.yml`, `tests/shared/` |
-| Operator safety | `docs/safe-operation.md`, `docs/threat-model.md` |
-| Reporting | `docs/sample-report.json`, `scripts/review_scan_report.sh` |
+All four use the shared engine in `scanners/_shared/` (PowerShell + Bash). Tests and CI live under `tests/` and `.github/workflows/ci.yml`. Sample output: [docs/sample-report.json](docs/sample-report.json).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
@@ -38,8 +31,6 @@ Previously distributed as four separate repositories, all scanners now live here
 Critical infrastructure operators across water, energy, building automation, and rail sectors face escalating cyberattacks targeting exposed PLCs, HMIs, and remote access systems. Each sector scanner in this portfolio implements **sector-specific port coverage, threat intelligence, and remediation guidance** drawn from CISA ICS advisories, FBI PSAs, and vendor CVE databases.
 
 All scanners share a defensive posture: **TCP port reachability checks only** — no credential testing, no exploit payloads, no configuration changes.
-
-**Keywords:** ICS security scanner, OT vulnerability scanner, SCADA exposure assessment, critical infrastructure protection, CISA AA26-097A, PowerShell ICS scanner, Bash SCADA scanner, water utility cybersecurity, power grid OT security, BACnet scanner, rail OT security
 
 ---
 
@@ -179,9 +170,9 @@ ics-ot-protector/
 ## Documentation
 
 ### Shared
-- [Project status & handoff](docs/PROJECT_STATUS.md)
-- [For employers and hiring managers](docs/for-employers.md)
-- [GitHub credibility setup (topics, pin, live site)](docs/github-credibility-setup.md)
+- [Reviewing this repo for a role](docs/for-employers.md)
+- [Publishing the portfolio site](docs/github-credibility-setup.md)
+- [Project status](docs/PROJECT_STATUS.md)
 - [Safe Operation Guide](docs/safe-operation.md)
 - [Threat Model](docs/threat-model.md)
 - [Sample Report Format](docs/sample-report.md) · [Example JSON](docs/sample-report.json) · [Offline report review](docs/report-review-workflow.md)

@@ -26,10 +26,10 @@ categories=$(jq -r '(.metadata.summary.findings_by_category // {}) | keys | join
 top_host=$(jq -r '.metadata.summary.top_hosts[0].host // "n/a"' "$REPORT")
 
 cat <<EOF
-Suggested resume bullets (edit for accuracy and voice):
+Draft bullets from ${REPORT} — edit before using:
 
-- Delivered ${scanner} assessment output for a ${sector} sector scope: ${hosts} hosts reviewed, ${findings} exposure finding(s) (${critical} critical, ${high} high) with structured JSON reporting for IT/OT triage.
-- Prioritized remediation using severity and priority metadata (${immediate} immediate item(s)); categories included ${categories:-general OT exposure}.
-- Produced operator-readable triage artifacts (JSON summary, offline review CLI) suitable for handoff to OT owners—top host by finding count: ${top_host}.
-- Followed authorized defensive assessment practice: TCP reachability checks only, CISA-aligned remediation notes, no credential testing or exploit payloads.
+- Ran ${scanner} over a ${sector} scope (${hosts} hosts, ${findings} findings: ${critical} critical, ${high} high) and exported structured JSON for triage.
+- Flagged ${immediate} item(s) for immediate attention; main categories: ${categories:-OT exposure}.
+- Built review output an OT team can act on (summary stats, offline review CLI); busiest host in this run: ${top_host}.
+- Work stayed within authorized defensive scope: TCP checks only, no credentials or exploit payloads.
 EOF

@@ -98,16 +98,16 @@
     <section class="hero" aria-labelledby="project-title">
       <p class="kicker">Critical infrastructure · open source · MIT · v4.4</p>
       <h1 id="project-title" class="hero-title">ICS OT Protector</h1>
-      <p class="lede">Defensive OT/SCADA exposure discovery across water, energy, building automation, and rail. PowerShell and Bash scanners for authorized networks: TCP reachability checks, sector port catalogs, preflight validation, and analyst-ready JSON reports with remediation metadata.</p>
+      <p class="lede">OT/SCADA exposure checks for water, energy, building automation, and rail. PowerShell and Bash, TCP reachability on authorized networks, JSON reports you can review offline.</p>
       <div class="actions">
-        <a class="btn" href="https://github.com/spinfosecurity/ics-ot-protector">View source on GitHub</a>
+        <a class="btn" href="https://github.com/spinfosecurity/ics-ot-protector">Source on GitHub</a>
         <a class="btn btn-ghost" href="https://github.com/spinfosecurity/ics-ot-protector#quick-start">Quick start</a>
       </div>
     </section>
 
     <section class="section" aria-labelledby="sectors-heading">
-      <h2 id="sectors-heading">Sectors covered</h2>
-      <p class="section-intro">Former standalone repos are archived. Active development continues in this monorepo.</p>
+      <h2 id="sectors-heading">Sectors</h2>
+      <p class="section-intro">Older standalone repos are archived; everything lives here now.</p>
       <ul class="sector-list">
         <li>
           <a href="https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/water">
@@ -145,22 +145,13 @@
         <li>Supports offline triage via <code>review_scan_report.sh</code> and <code>Review-ScanReport.ps1</code></li>
         <li>Points operators to public CISA/ICS-oriented remediation guidance in-repo</li>
       </ul>
-      <div class="truth-box">
-        <article>
-          <h3>Accurate claim</h3>
-          <p>These tools identify <em>exposure candidates</em> via TCP connect checks. An open port is a lead for investigation—not proof of a confirmed exploit or active compromise.</p>
-        </article>
-        <article>
-          <h3>Explicit non-goals</h3>
-          <p>No credential testing, no exploit payloads, no config changes, no IPv6 scanning, and no substitute for a full penetration test or continuous monitoring product.</p>
-        </article>
-      </div>
+      <p class="notice">An open port is a lead to investigate, not proof of compromise. These tools do not test credentials, run exploits, or replace a full pentest. IPv6 is not supported yet.</p>
     </section>
 
     <section class="section" aria-labelledby="hire-heading">
-      <h2 id="hire-heading">Why this matters for hiring review</h2>
-      <p class="section-intro">For OT/ICS security or security-automation roles, this repo shows end-to-end delivery: sector research, scripting, shared libraries, tests and CI, and clear safety documentation.</p>
-      <p class="notice">Built and maintained by <a href="/">SpinfoSecurity</a>. Authorized defensive use only.</p>
+      <h2 id="hire-heading">If you're reviewing this for a hire</h2>
+      <p class="section-intro">See the <a href="https://github.com/spinfosecurity/ics-ot-protector/blob/main/docs/for-employers.md">repo walkthrough</a> for where to look in the code.</p>
+      <p class="notice">Built by <a href="/">SpinfoSecurity</a>. Authorized use only.</p>
     </section>
   </main>
 

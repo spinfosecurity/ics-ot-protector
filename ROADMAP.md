@@ -2,7 +2,7 @@
 
 This roadmap describes intended defensive improvements. It is not a commitment or release schedule.
 
-**Current state:** [PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · **Latest release:** v4.4.0
+**Current state:** [PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · **Latest release:** v4.4.1
 
 ## v4.2.x — Shared engine & operator safety ✅
 - Shared Bash/PowerShell scan engine and non-interactive scan mode
@@ -20,10 +20,9 @@ This roadmap describes intended defensive improvements. It is not a commitment o
 - Offline report-review workflow and CLI helpers
 - SIEM/ticketing ingestion examples — **deferred**
 
-## Portfolio & hiring presence ✅
-- Live site at [spinfosecurity.github.io](https://spinfosecurity.github.io)
-- Employer guide, credibility setup script, portfolio deploy workflow
-- See [for-employers.md](docs/for-employers.md) and [github-credibility-setup.md](docs/github-credibility-setup.md)
+## Portfolio site
+
+Done for now — [spinfosecurity.github.io](https://spinfosecurity.github.io). Source in `portfolio-site/`; see [for-employers.md](docs/for-employers.md) and [github-credibility-setup.md](docs/github-credibility-setup.md) if you need to update it.
 
 ## Future (if development resumes)
 - Safe fixture-driven tests for sector-specific detection hooks
