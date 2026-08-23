@@ -26,6 +26,8 @@ Scan mode (non-interactive, all sectors):
   --output-dir <dir>    Report directory (default ./reports)
   --cve-only            Energy-grid CVE-only fast mode
   --eot-hot-only        Rail EOT/HOT-only fast mode
+  --force               Acknowledge large scan scope (/17-/8 or >4096 hosts)
+  --no-csv              Skip CSV export (JSON is always written)
 
 Examples:
   ./scripts/ics-ot-protector.sh water

@@ -14,6 +14,9 @@
 
 .EXAMPLE
     pwsh .\scripts\ics-ot-protector.ps1 -Scan -ScanSector energy-grid -Subnets 192.168.10.0/24 -CveOnly
+
+.EXAMPLE
+    pwsh .\scripts\ics-ot-protector.ps1 -Scan -ScanSector water -Subnets 10.0.0.0/17 -Force
 #>
 [CmdletBinding(DefaultParameterSetName = 'Sector')]
 param(
@@ -48,6 +51,12 @@ param(
     [Parameter(ParameterSetName = 'Scan')]
     [switch]$EotHotOnly,
 
+    [Parameter(ParameterSetName = 'Scan')]
+    [switch]$Force,
+
+    [Parameter(ParameterSetName = 'Scan')]
+    [switch]$NoCsv,
+
     [Parameter(ParameterSetName = 'Sector', ValueFromRemainingArguments = $true)]
     [object[]]$RemainingArgs
 )
@@ -61,7 +70,7 @@ if ($Scan) {
         throw "Scan runner not found: $runner"
     }
     & $runner -Sector $ScanSector -Subnets $Subnets -Threads $Threads -TimeoutMs $TimeoutMs `
-        -OutputDir $OutputDir -CveOnly:$CveOnly -EotHotOnly:$EotHotOnly
+        -OutputDir $OutputDir -CveOnly:$CveOnly -EotHotOnly:$EotHotOnly -Force:$Force -NoCsv:$NoCsv
     return
 }
 

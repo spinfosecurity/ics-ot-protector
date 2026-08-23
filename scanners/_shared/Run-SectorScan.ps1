@@ -21,7 +21,9 @@ param(
     [string]$OutputDir = './reports',
 
     [switch]$CveOnly,
-    [switch]$EotHotOnly
+    [switch]$EotHotOnly,
+    [switch]$Force,
+    [switch]$NoCsv
 )
 
 Set-StrictMode -Version Latest
@@ -30,11 +32,14 @@ $ErrorActionPreference = 'Stop'
 $SharedRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $SharedRoot '_shared' 'Import-SectorConfig.ps1')
 . (Join-Path $SharedRoot '_shared' 'ScannerHelpers.ps1')
+. (Join-Path $SharedRoot '_shared' 'Preflight.ps1')
 . (Join-Path $SharedRoot '_shared' 'ScanEngine.ps1')
 . (Join-Path $SharedRoot '_shared' 'Export-ScanReport.ps1')
 
+$scope = Confirm-ScanScope -Subnets $Subnets -Force:$Force
 $config = Import-SectorConfig -Sector $Sector
 $findings = [System.Collections.Concurrent.ConcurrentBag[pscustomobject]]::new()
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 switch ($Sector) {
     'water' {
@@ -61,10 +66,13 @@ switch ($Sector) {
     }
 }
 
-$targets = Build-ScanTargets -Subnets $Subnets
+$targets = Build-ScanTargets -Subnets $scope.ValidatedSubnets
 if ($targets.Count -eq 0) {
     throw 'No valid targets from -Subnets'
 }
+
+Write-PreflightSummary -Sector $Sector -HostCount $targets.Count -PortCount $portCatalog.Count `
+    -Threads $Threads -TimeoutMs $TimeoutMs
 
 if (-not (Test-Path -LiteralPath $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
@@ -80,15 +88,25 @@ $null = Invoke-TcpPortScan -Targets $targets -PortCatalog $portCatalog -TimeoutM
     Write-Host ("[{0}] [{1}] {2}:{3}  {4}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Finding.Severity, $Finding.Host, $Finding.Port, $Finding.Description) -ForegroundColor $color
 }
 
-$export = Export-ScanReport -Findings @($findings.ToArray()) -OutputDir $OutputDir -Prefix $reportPrefix -Metadata @{
-    sector      = $Sector
-    scanner     = $scannerName
-    target      = ($Subnets -join ',')
-    timeout_ms  = $TimeoutMs
-    threads     = $Threads
-    cve_only    = [bool]$CveOnly
-    eot_hot_only = [bool]$EotHotOnly
-}
+$stopwatch.Stop()
 
-Write-Host ("[{0}] [INFO] Scan complete | Findings: {1} | Report: {2}" -f `
-    (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $findings.Count, $export.ReportPath)
+$export = Export-ScanReport -Findings @($findings.ToArray()) -OutputDir $OutputDir -Prefix $reportPrefix `
+    -Metadata @{
+        sector       = $Sector
+        scanner      = $scannerName
+        target       = ($Subnets -join ',')
+        timeout_ms   = $TimeoutMs
+        threads      = $Threads
+        cve_only     = [bool]$CveOnly
+        eot_hot_only = [bool]$EotHotOnly
+    } `
+    -HostsScanned $targets.Count -PortsChecked $portCatalog.Count -DurationMs $stopwatch.ElapsedMilliseconds `
+    -ExportCsv:(-not $NoCsv)
+
+if ($export.CsvPath) {
+    Write-Host ("[{0}] [INFO] Scan complete | Findings: {1} | JSON: {2} | CSV: {3}" -f `
+        (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $findings.Count, $export.ReportPath, $export.CsvPath)
+} else {
+    Write-Host ("[{0}] [INFO] Scan complete | Findings: {1} | Report: {2}" -f `
+        (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $findings.Count, $export.ReportPath)
+}

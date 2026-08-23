@@ -2,21 +2,23 @@
 
 This roadmap describes intended defensive improvements. It is not a commitment or release schedule.
 
-## v1.0.x — Stabilize
-- Documentation corrections and safe-operation refinements.
-- False-positive review and report-format cleanup.
-- Maintenance of water-sector protocol and advisory references.
+## v4.2.x — Shared engine & operator safety (current)
+- ✅ Shared Bash/PowerShell scan engine and non-interactive scan mode
+- ✅ Pre-flight scope validation with `--force` for large subnets
+- ✅ `metadata.summary` and optional CSV export in scan mode
+- ✅ Fixture-based engine and export integration tests
 
-## v1.1 — Configurability
-- Configurable approved port profiles and scan settings.
-- Clearer target/scope validation and operator feedback.
-- Expanded JSON and CSV evidence fields for triage.
+## v4.3 — Configurability
+- Configurable approved port profiles and scan settings (`--config` / custom YAML overlays)
+- Wire pre-flight, summary, and CSV into interactive sector scanners
+- Clearer operator feedback during long scans (progress, ETA)
 
-## v1.2 — Workflow integration
-- Example mappings for SIEM, ticketing, and ITSM ingestion.
-- More structured remediation metadata and report summaries.
+## v4.4 — Workflow integration
+- Example mappings for SIEM, ticketing, and ITSM ingestion
+- More structured remediation metadata and report summaries
+- Offline report-review workflow examples
 
 ## Future
-- Safe fixture-driven tests for detection and reporting logic.
-- Optional offline report-review workflow.
-- Community-contributed detection improvements, subject to defensive-use review.
+- Safe fixture-driven tests for sector-specific detection hooks
+- Community-contributed detection improvements, subject to defensive-use review
+- IPv6 scope support (currently IPv4 only)

@@ -4,6 +4,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-08-23
+
 ### Added
 - **Shared Bash scan engine** — `scanners/_shared/scan_engine.sh` with `run_tcp_port_scan()` for unified host×port probing, deduplication, and parallel workers
 - **Full CIDR expansion** — `expand_cidr()` and `build_scan_targets()` in `scanner_helpers.sh`
@@ -12,12 +14,16 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 - **PowerShell port catalog builders** — `Get-WaterPortCatalogFromConfig`, `Get-EnergyGridPortCatalogFromConfig`, `Get-BasPortCatalogFromConfig`
 - **Non-interactive scan runners** — `scanners/_shared/run_sector_scan.sh` and `scanners/_shared/Run-SectorScan.ps1`
 - **Water and BAS port catalog builders (Bash)** — `build_water_port_catalog()` and `build_bas_port_catalog()`
+- **Pre-flight validation** — `preflight.sh` and `Preflight.ps1` for dependency checks, CIDR validation, and host-count limits (`--force` / `-Force` for large scopes)
+- **Report summary and CSV export** — `metadata.summary` in JSON reports; companion CSV in scan mode (`--no-csv` / `-NoCsv` to skip)
+- **Fixture-based integration tests** — `preflight_tests.sh`, `scan_engine_integration_tests.sh`, `Preflight.Tests.ps1`
 
 ### Changed
 - **EGP and ROP Bash scanners** — refactored to use the shared scan engine instead of inline scan loops
 - **WUP WUP and BAS Guardian Bash scanners** — refactored to use the shared scan engine and port catalog builders
 - **All PowerShell sector scanners** — refactored to use `Invoke-TcpPortScan()` from the shared scan engine
-- **Unified launchers** — added non-interactive scan mode (`scan` subcommand in Bash; `-Scan` in PowerShell)
+- **Unified launchers** — added non-interactive scan mode (`scan` subcommand in Bash; `-Scan` in PowerShell) with `--force`, `--no-csv`, `-Force`, and `-NoCsv`
+- **Sample report documentation** — `docs/sample-report.json` and `docs/sample-report.md` document `metadata.summary` and CSV columns
 
 ## [4.1.2] - 2026-08-23
 

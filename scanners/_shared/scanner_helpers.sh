@@ -91,3 +91,45 @@ build_scan_targets() {
     done < <(expand_cidr "$subnet")
   done
 }
+
+# Return host count for a CIDR without enumerating addresses.
+count_hosts_in_cidr() {
+  local cidr="$1" ip prefix ip_int mask network size
+  ip="${cidr%/*}"
+  prefix="${cidr#*/}"
+  (( prefix >= 8 && prefix <= 32 )) || return 1
+  ip_int=$(ip2int "$ip")
+  if (( prefix == 32 )); then
+    echo 1
+    return 0
+  fi
+  mask=$(( (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF ))
+  network=$(( ip_int & mask ))
+  size=$(( 1 << (32 - prefix) ))
+  if (( prefix >= 31 )); then
+    echo 1
+  else
+    echo $(( size - 2 ))
+  fi
+}
+
+# Sum deduplicated host counts for comma-separated CIDRs.
+count_scan_targets() {
+  local subnets_csv="$1"
+  declare -A seen=()
+  local subnet subnet_arr=() ip total=0
+  IFS=',' read -r -a subnet_arr <<< "$subnets_csv"
+  for subnet in "${subnet_arr[@]}"; do
+    subnet="${subnet// /}"
+    [[ -z "$subnet" ]] && continue
+    validate_cidr "$subnet" || continue
+    while IFS= read -r ip; do
+      [[ -z "$ip" ]] && continue
+      if [[ -z "${seen[$ip]+x}" ]]; then
+        seen[$ip]=1
+        total=$((total + 1))
+      fi
+    done < <(expand_cidr "$subnet")
+  done
+  echo "$total"
+}

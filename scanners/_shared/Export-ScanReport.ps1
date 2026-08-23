@@ -51,6 +51,53 @@ function ConvertTo-StandardFindings {
     return ,@($normalized)
 }
 
+function Get-ScanReportSummary {
+    param(
+        [Parameter(Mandatory)][array]$Findings,
+        [int]$HostsScanned = 0,
+        [int]$PortsChecked = 0,
+        [int]$DurationMs = 0
+    )
+
+    $bySeverity = @{}
+    foreach ($f in $Findings) {
+        $sev = [string]$f.Severity
+        if (-not $bySeverity.ContainsKey($sev)) { $bySeverity[$sev] = 0 }
+        $bySeverity[$sev]++
+    }
+
+    return [ordered]@{
+        hosts_scanned         = $HostsScanned
+        ports_checked         = $PortsChecked
+        probes_total          = $HostsScanned * $PortsChecked
+        findings_total        = @($Findings).Count
+        findings_by_severity  = $bySeverity
+        duration_ms           = $DurationMs
+    }
+}
+
+function Export-ScanReportCsv {
+    param(
+        [Parameter(Mandatory)][string]$JsonPath,
+        [Parameter(Mandatory)][string]$CsvPath
+    )
+
+    $doc = Get-Content -LiteralPath $JsonPath -Raw | ConvertFrom-Json
+    $rows = foreach ($f in @($doc.findings)) {
+        [pscustomobject]@{
+            Timestamp   = $f.Timestamp
+            Host        = $f.Host
+            Port        = $f.Port
+            Service     = $f.Service
+            Severity    = $f.Severity
+            Category    = $f.Category
+            Description = $f.Description
+            Remediation = $f.Remediation
+        }
+    }
+    $rows | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
+}
+
 function Export-ScanReportJson {
     param(
         [Parameter(Mandatory)]
@@ -59,10 +106,18 @@ function Export-ScanReportJson {
         [Parameter(Mandatory)]
         [string]$Path,
         [Parameter(Mandatory)]
-        [hashtable]$Metadata
+        [hashtable]$Metadata,
+        [int]$HostsScanned = 0,
+        [int]$PortsChecked = 0,
+        [int]$DurationMs = 0
     )
 
     $ordered = Sort-ScanFindings -Findings (ConvertTo-StandardFindings -Findings $Findings)
+    if (-not $Metadata.summary) {
+        $Metadata.summary = Get-ScanReportSummary -Findings $ordered `
+            -HostsScanned $HostsScanned -PortsChecked $PortsChecked -DurationMs $DurationMs
+    }
+
     $document = [ordered]@{
         schema_version = '1.0'
         generated_at   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
@@ -76,9 +131,9 @@ function Export-ScanReportJson {
 function Export-ScanReport {
     <#
     .SYNOPSIS
-        Writes a timestamped JSON scan report using the shared schema.
+        Writes timestamped JSON (and optional CSV) scan reports using the shared schema.
     .OUTPUTS
-        PSCustomObject with ReportPath property.
+        PSCustomObject with ReportPath and optional CsvPath properties.
     #>
     param(
         [Parameter(Mandatory)]
@@ -90,7 +145,11 @@ function Export-ScanReport {
         [string]$Prefix,
         [Parameter(Mandatory)]
         [hashtable]$Metadata,
-        [string]$Timestamp = (Get-Date -Format 'yyyyMMdd-HHmmss')
+        [string]$Timestamp = (Get-Date -Format 'yyyyMMdd-HHmmss'),
+        [int]$HostsScanned = 0,
+        [int]$PortsChecked = 0,
+        [int]$DurationMs = 0,
+        [switch]$ExportCsv
     )
 
     if (-not (Test-Path -LiteralPath $OutputDir)) {
@@ -98,9 +157,15 @@ function Export-ScanReport {
     }
 
     $reportPath = Join-Path $OutputDir "${Prefix}-${Timestamp}.json"
-    Export-ScanReportJson -Findings $Findings -Path $reportPath -Metadata $Metadata
+    Export-ScanReportJson -Findings $Findings -Path $reportPath -Metadata $Metadata `
+        -HostsScanned $HostsScanned -PortsChecked $PortsChecked -DurationMs $DurationMs
 
-    [pscustomobject]@{
-        ReportPath = $reportPath
+    $result = [ordered]@{ ReportPath = $reportPath }
+    if ($ExportCsv) {
+        $csvPath = Join-Path $OutputDir "${Prefix}-${Timestamp}.csv"
+        Export-ScanReportCsv -JsonPath $reportPath -CsvPath $csvPath
+        $result.CsvPath = $csvPath
     }
+
+    return [pscustomobject]$result
 }

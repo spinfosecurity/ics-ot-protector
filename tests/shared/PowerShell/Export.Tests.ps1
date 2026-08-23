@@ -66,6 +66,13 @@ Describe 'Export-ScanReport' {
         $json.metadata.sector | Should -Be 'energy-grid'
         @($json.findings).Count | Should -Be 1
         $json.findings[0].Host | Should -Be '192.168.1.10'
+        $json.metadata.summary.findings_total | Should -Be 1
+    }
+
+    It 'writes CSV when ExportCsv is enabled' {
+        $paths = Export-ScanReport -Findings @() -OutputDir $script:TempDir -Prefix 'csv-export' -Timestamp '20260819-120002' `
+            -Metadata @{ sector = 'rail'; scanner = 'ROP' } -ExportCsv
+        Test-Path -LiteralPath $paths.CsvPath | Should -BeTrue
     }
 
     It 'supports empty findings with metadata' {

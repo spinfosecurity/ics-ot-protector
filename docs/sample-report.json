@@ -4,14 +4,20 @@
   "metadata": {
     "sector": "water",
     "scanner": "WUP WUP",
-    "version": "3.4.0",
-    "reference": "CISA Alert AA26-097A (2026-07-30)",
-    "subnets": "192.168.10.0/24",
-    "timeout_seconds": 2,
-    "total_scanned": 254,
-    "critical_count": 1,
-    "high_count": 2,
-    "duration_seconds": 48.3
+    "target": "192.168.10.0/24",
+    "timeout_ms": 1500,
+    "threads": 64,
+    "summary": {
+      "hosts_scanned": 254,
+      "ports_checked": 18,
+      "probes_total": 4572,
+      "findings_total": 3,
+      "findings_by_severity": {
+        "CRITICAL": 1,
+        "HIGH": 2
+      },
+      "duration_ms": 48300
+    }
   },
   "findings": [
     {
