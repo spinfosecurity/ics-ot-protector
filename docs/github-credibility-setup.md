@@ -1,5 +1,7 @@
 # GitHub credibility setup (Lane B)
 
+**Status:** Completed 2026-08-23 (topics, PR #9 closed, site published, repo pinned). Re-run only if you change portfolio content or profile README.
+
 Run this **once while logged into GitHub as `spinfosecurity`** (not the Cursor bot). It automates the hiring-visibility tasks that require account owner permissions.
 
 ## Quick start

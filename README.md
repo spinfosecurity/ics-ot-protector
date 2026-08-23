@@ -1,6 +1,6 @@
 # ICS OT Protector — Unified Critical Infrastructure Scanner Portfolio
 
-**For employers:** [5-minute code review guide](docs/for-employers.md) · [Portfolio site](https://spinfosecurity.github.io) · **Release:** [v4.4.0](docs/releases/v4.4.0.md)
+**For employers:** [5-minute code review guide](docs/for-employers.md) · [Portfolio site](https://spinfosecurity.github.io) · **Release:** [v4.4.1](docs/releases/v4.4.1.md) · [Project status](docs/PROJECT_STATUS.md)
 
 **ICS OT Protector** is a free, open-source collection of sector-specific OT/SCADA cybersecurity scanners. Each scanner targets the protocols, vendor CVEs, and attack patterns relevant to its critical infrastructure sector — all from a single monorepo with shared governance, CI, and safety documentation.
 
@@ -179,6 +179,7 @@ ics-ot-protector/
 ## Documentation
 
 ### Shared
+- [Project status & handoff](docs/PROJECT_STATUS.md)
 - [For employers and hiring managers](docs/for-employers.md)
 - [GitHub credibility setup (topics, pin, live site)](docs/github-credibility-setup.md)
 - [Safe Operation Guide](docs/safe-operation.md)

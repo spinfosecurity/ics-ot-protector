@@ -4,6 +4,18 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.4.1] - 2026-08-23
+
+### Added
+- **Hiring & portfolio tooling** — [for-employers.md](docs/for-employers.md), [github-credibility-setup.md](docs/github-credibility-setup.md), `scripts/setup-github-credibility.sh`, `scripts/resume-bullets-from-report.sh`
+- **Portfolio site mirror** — `portfolio-site/` with deploy workflow and sync script
+- **Cloud Agent bootstrap** — `.cursor/install.sh` for reproducible dev/CI parity
+- **Project handoff** — [PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
+
+### Changed
+- **README** — employer links, engineering highlights, updated sector table
+- **Roadmap** — marks v4.2–v4.4 and portfolio work complete; defers SIEM/IPv6
+
 ## [4.4.0] - 2026-08-23
 
 ### Added
