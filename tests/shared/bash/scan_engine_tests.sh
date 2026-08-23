@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
 bash -n "${ROOT}/scanners/_shared/scan_engine.sh"
+bash -n "${ROOT}/scanners/_shared/run_sector_scan.sh"
 
 # shellcheck source=../../../scanners/_shared/load_sector_config.sh
 source "${ROOT}/scanners/_shared/load_sector_config.sh"
@@ -21,6 +22,14 @@ build_energy_grid_port_catalog cve_only
 
 grep -q '|CVE|' <<< "${PORTS[*]}" || { echo "cve_only catalog missing CVE entries" >&2; exit 1; }
 grep -q 'CVE|' <<< "${PORTS[0]}" || true
+
+initialize_water_config
+build_water_port_catalog
+(( ${#PORTS[@]} > 10 )) || { echo "water catalog expected >10 ports, got ${#PORTS[@]}" >&2; exit 1; }
+
+initialize_bas_config
+build_bas_port_catalog
+(( ${#PORTS[@]} > 10 )) || { echo "bas catalog expected >10 ports, got ${#PORTS[@]}" >&2; exit 1; }
 
 initialize_rail_config
 build_rail_port_catalog all

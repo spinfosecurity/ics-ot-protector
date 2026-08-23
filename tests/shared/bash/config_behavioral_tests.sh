@@ -22,9 +22,18 @@ build_energy_grid_port_catalog full
 [[ ${#PORTS[@]} -gt $cve_only_count ]] && pass "full catalog larger than cve_only" || fail "cve_only filter not working"
 
 echo ""
+echo "=== water config ==="
+initialize_water_config
+[[ ${#REMOTE_ACCESS_PORTS[@]} -eq 8 ]] && pass "8 remote access ports" || fail "expected 8 remote access ports got ${#REMOTE_ACCESS_PORTS[@]}"
+build_water_port_catalog
+[[ ${#PORTS[@]} -gt 10 ]] && pass "water port catalog built (${#PORTS[@]} entries)" || fail "water port catalog too small"
+
+echo ""
 echo "=== bas config ==="
 initialize_bas_config
 [[ ${#CRITICAL_BAS_PORTS[@]} -eq 9 ]] && pass "9 BAS protocol ports" || fail "expected 9 BAS ports"
+build_bas_port_catalog
+[[ ${#PORTS[@]} -gt 10 ]] && pass "bas port catalog built (${#PORTS[@]} entries)" || fail "bas port catalog too small"
 [[ -n "${VENDOR_ALERT_PORTS[5489]:-}" ]] && pass "Honeywell vendor alert on 5489" || fail "5489 missing"
 [[ -n "${THREAT_CONTEXT[BACnet/IP]:-}" ]] && pass "BACnet/IP threat context" || fail "BACnet/IP context missing"
 
@@ -37,5 +46,5 @@ build_rail_port_catalog eothot
 [[ ${#PORTS[@]} -eq 2 ]] && pass "2 ports in EotHot-only catalog" || fail "expected 2 EotHot ports got ${#PORTS[@]}"
 
 echo ""
-printf "Energy-grid/BAS/rail config tests: %d passed, %d failed\n" "$PASS" "$FAIL"
+printf "Sector config tests: %d passed, %d failed\n" "$PASS" "$FAIL"
 (( FAIL == 0 ))

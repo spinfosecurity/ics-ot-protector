@@ -11,6 +11,9 @@
 
 .EXAMPLE
     pwsh .\scripts\ics-ot-protector.ps1 -Sector rail -Subnets 10.10.20.0/24
+
+.EXAMPLE
+    bash ./scripts/ics-ot-protector.sh scan --sector energy-grid --subnets 192.168.10.0/24
 #>
 [CmdletBinding()]
 param(

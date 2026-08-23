@@ -29,6 +29,7 @@ PY
 initialize_water_config() {
   local json
   json="$(_load_config_json water)" || return 1
+  unset REMOTE_ACCESS_PORTS OT_PROTOCOL_PORTS THREAT_CONTEXT
   SCRIPT_VERSION="$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d['metadata']['version'])" <<< "$json")"
   SCRIPT_REFERENCE="$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d['metadata']['reference'])" <<< "$json")"
   REMOTE_ACCESS_PORTS=()
@@ -55,6 +56,44 @@ d=json.load(sys.stdin)
 for k,v in d['threat_context'].items():
     print(f'{k}={v}')
 " <<< "$json")
+}
+
+lookup_threat_context() {
+  local key="$1"
+  local fallback="${2:-Exposed service — review access controls}"
+  if [[ -n "${THREAT_CONTEXT[$key]:-}" ]]; then
+    echo "${THREAT_CONTEXT[$key]}"
+  else
+    echo "$fallback"
+  fi
+}
+
+_service_token() {
+  echo "$1" | grep -oE '^[A-Za-z0-9/]+'
+}
+
+build_water_port_catalog() {
+  PORTS=()
+  local port service severity token ctx category remediation
+  for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
+    IFS='|' read -r port service severity <<< "$entry"
+    token=$(_service_token "$service")
+    ctx=$(lookup_threat_context "$token")
+    if [[ "$severity" == "CRITICAL" ]]; then
+      category="Remote Access - Immediate Threat"
+      remediation="BLOCK IMMEDIATELY or restrict to VPN only"
+    else
+      category="Web HMI Exposure"
+      remediation="Restrict to engineering VLAN; implement MFA"
+    fi
+    PORTS+=("${port}|${service}|${severity}|${category}|${ctx}|${remediation}")
+  done
+  for entry in "${OT_PROTOCOL_PORTS[@]}"; do
+    IFS='|' read -r port service <<< "$entry"
+    token=$(_service_token "$service")
+    ctx=$(lookup_threat_context "$token")
+    PORTS+=("${port}|${service}|HIGH|OT Protocol Exposure|${ctx}|Remove from internet; implement firewall rules")
+  done
 }
 
 initialize_energy_grid_config() {
@@ -115,6 +154,7 @@ build_energy_grid_port_catalog() {
 initialize_bas_config() {
   local json
   json="$(_load_config_json bas)" || return 1
+  unset REMOTE_ACCESS_PORTS CRITICAL_BAS_PORTS THREAT_CONTEXT VENDOR_ALERT_PORTS
   SCRIPT_VERSION="$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d['metadata']['version'])" <<< "$json")"
   SCRIPT_TAGLINE="$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d['metadata']['tagline'])" <<< "$json")"
   REFERENCE="$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d['metadata']['reference'])" <<< "$json")"
@@ -147,6 +187,38 @@ d=json.load(sys.stdin)
 for a in d['vendor_alerts']:
     print(f\"{a['port']}|{a['vendor']}|{a['cve']}|{a['cvss']}|{a['description']}|{a['action']}\")
 " <<< "$json")
+}
+
+build_bas_port_catalog() {
+  PORTS=()
+  local port service key severity threat remediation protocol vendor cve cvss desc action
+  for port in "${!REMOTE_ACCESS_PORTS[@]}"; do
+    service="${REMOTE_ACCESS_PORTS[$port]}"
+    key=$(echo "$service" | cut -d' ' -f1)
+    if [[ "$port" =~ ^(3389|5900|5901|22)$ ]]; then
+      severity="CRITICAL"
+      remediation="BLOCK IMMEDIATELY or restrict to VPN only"
+    else
+      severity="HIGH"
+      remediation="Restrict to management VLAN; implement MFA; verify auth enabled"
+    fi
+    if [[ "$port" == "80" ]]; then
+      threat="${THREAT_CONTEXT[Honeywell]:-$(lookup_threat_context "$key" "Remote access point - verify authorization and MFA")}"
+    else
+      threat=$(lookup_threat_context "$key" "Remote access point - verify authorization and MFA")
+    fi
+    PORTS+=("${port}|${service}|${severity}|BAS Exposure|${threat}|${remediation}")
+  done
+  for port in "${!CRITICAL_BAS_PORTS[@]}"; do
+    protocol="${CRITICAL_BAS_PORTS[$port]}"
+    key=$(echo "$protocol" | cut -d' ' -f1)
+    threat=$(lookup_threat_context "$key" "BAS protocol exposure - review segmentation")
+    PORTS+=("${port}|${protocol}|HIGH|BAS Exposure|${threat}|Remove from internet; segment from IT network; patch bacnet-stack")
+  done
+  for port in "${!VENDOR_ALERT_PORTS[@]}"; do
+    IFS='|' read -r vendor cve cvss desc action <<< "${VENDOR_ALERT_PORTS[$port]}"
+    PORTS+=("${port}|${vendor} BMS Platform|CRITICAL|BAS Exposure|${cve} - ${desc}|${action}")
+  done
 }
 
 initialize_rail_config() {

@@ -43,6 +43,8 @@ source "${REPO_ROOT}/scanners/_shared/load_sector_config.sh"
 source "${REPO_ROOT}/scanners/_shared/scanner_helpers.sh"
 # shellcheck source=../_shared/export_scan_report.sh
 source "${REPO_ROOT}/scanners/_shared/export_scan_report.sh"
+# shellcheck source=../_shared/scan_engine.sh
+source "${REPO_ROOT}/scanners/_shared/scan_engine.sh"
 initialize_water_config
 
 # ---------------------------------------------------------------------------- #
@@ -67,12 +69,7 @@ cl() { printf "${1}%s${RESET}\n" "$2"; }
 # ---------------------------------------------------------------------------- #
 
 get_threat_context() {
-    local key="$1"
-    if [[ -n "${THREAT_CONTEXT[$key]:-}" ]]; then
-        echo "${THREAT_CONTEXT[$key]}"
-    else
-        echo "Exposed service — review access controls"
-    fi
+    lookup_threat_context "$1"
 }
 
 # ---------------------------------------------------------------------------- #
@@ -118,7 +115,7 @@ show_intro() {
     echo ""
     cl "$WHITE" "Technical Limitations:"
     cl "$GRAY"  "  • TCP port scan only (no UDP, no banner grabbing)"
-    cl "$GRAY"  "  • Single-threaded (scan time scales with subnet count and timeout)"
+    cl "$GRAY"  "  • Parallel per-host scanning (up to 50 concurrent workers)"
     cl "$GRAY"  "  • May produce false negatives behind aggressive firewalls"
     cl "$GRAY"  "  • Requires local network access"
     echo ""
@@ -342,33 +339,47 @@ generate_report() {
     export_scan_report_write "$report_dir" "WUP-results" "water" "WUP WUP" "$findings_json"
 }
 
+# Collect or store a finding in legacy pipe-delimited format.
+wup_record_finding() {
+    local sev="$1" ip="$2" port="$3" service="$4" threat_type="$5" threat_ctx="$6" action="$7"
+    local line="${sev}|${ip}|${port}|${service}|${threat_type}|${threat_ctx}|${action}"
+    FINDINGS_ALL+=("$line")
+    if [[ -n "${WUP_FINDINGS_FILE:-}" ]]; then
+        echo "$line" >> "$WUP_FINDINGS_FILE"
+    fi
+}
+
+wup_finding_hook() {
+    wup_record_finding "$4" "$1" "$2" "$3" "$5" "$6" "$7"
+}
+
+wup_display_finding() {
+    local sev ip port service threat_type threat_ctx action
+    IFS='|' read -r sev ip port service threat_type threat_ctx action <<< "$1"
+    if [[ "$sev" == "CRITICAL" ]]; then
+        printf "${RED}  [!!! CRITICAL !!!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
+        printf "${RED}      %s${RESET}\n" "$threat_ctx"
+        printf "${YELLOW}      Action: %s${RESET}\n" "$action"
+        (( CRITICAL_COUNT++ )) || true
+    else
+        local color="$YELLOW"
+        [[ "$threat_type" == "OT Protocol Exposure" ]] && color="$MAGENTA"
+        printf "${color}  [!! HIGH !!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
+        printf "${color}      %s${RESET}\n" "$threat_ctx"
+        printf "${DARK_YELLOW}      Action: %s${RESET}\n" "$action"
+        (( HIGH_COUNT++ )) || true
+    fi
+}
+
 # Scan all ports on one IP; write pipe-delimited findings to out_file.
 scan_host() {
     local ip="$1" timeout_sec="$2" out_file="$3"
-    for entry in "${REMOTE_ACCESS_PORTS[@]}"; do
-        IFS='|' read -r port service severity <<< "$entry"
-        if test_tcp_port "$ip" "$port" "$timeout_sec"; then
-            local token
-            token=$(echo "$service" | grep -oE '^[A-Za-z0-9/]+')
-            local ctx
-            ctx=$(get_threat_context "$token")
-            if [[ "$severity" == "CRITICAL" ]]; then
-                echo "CRITICAL|${ip}|${port}|${service}|Remote Access - Immediate Threat|${ctx}|BLOCK IMMEDIATELY or restrict to VPN only" >> "$out_file"
-            else
-                echo "HIGH|${ip}|${port}|${service}|Web HMI Exposure|${ctx}|Restrict to engineering VLAN; implement MFA" >> "$out_file"
-            fi
-        fi
-    done
-    for entry in "${OT_PROTOCOL_PORTS[@]}"; do
-        IFS='|' read -r port protocol <<< "$entry"
-        if test_tcp_port "$ip" "$port" "$timeout_sec"; then
-            local token
-            token=$(echo "$protocol" | grep -oE '^[A-Za-z0-9/]+')
-            local ctx
-            ctx=$(get_threat_context "$token")
-            echo "HIGH|${ip}|${port}|${protocol}|OT Protocol Exposure|${ctx}|Remove from internet; implement firewall rules" >> "$out_file"
-        fi
-    done
+    build_water_port_catalog
+    SCAN_TARGETS=("$ip")
+    WUP_FINDINGS_FILE="$out_file"
+    SCAN_ENGINE_FINDING_HOOK=wup_finding_hook
+    run_tcp_port_scan 1 $((timeout_sec * 1000))
+    unset WUP_FINDINGS_FILE
 }
 
 # ---------------------------------------------------------------------------- #
@@ -403,81 +414,30 @@ main() {
     start_epoch=$(date +%s)
 
     local max_workers=50
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-    trap 'rm -rf "$tmp_dir"' EXIT
-
-    export -f scan_host get_threat_context
-    export REMOTE_ACCESS_PORTS OT_PROTOCOL_PORTS
+    build_water_port_catalog
+    SCAN_ENGINE_FINDING_HOOK=wup_finding_hook
 
     for subnet in "${SUBNETS[@]}"; do
-        local network_prefix
-        network_prefix=$(get_network_prefix "$subnet")
         local subnet_start_epoch
         subnet_start_epoch=$(date +%s)
-        local subnet_tmp="${tmp_dir}/${subnet//\//_}"
-        mkdir -p "$subnet_tmp"
+        local findings_before=${#FINDINGS_ALL[@]}
 
         show_scan_header "$subnet"
 
-        local active_workers=0
-        local completed=0
-
-        for i in $(seq 1 254); do
-            local ip="${network_prefix}.${i}"
-            local out_file="${subnet_tmp}/${i}.findings"
-
-            # Throttle: wait if at max concurrency
-            while (( active_workers >= max_workers )); do
-                wait -n 2>/dev/null || wait
-                (( active_workers-- )) || true
-                (( completed++ )) || true
-                if (( completed % 25 == 0 )); then
-                    echo ""
-                    show_progress "$completed" 254 "$subnet_start_epoch"
-                fi
-            done
-
-            scan_host "$ip" "$TIMEOUT" "$out_file" &
-            (( active_workers++ )) || true
-        done
-
-        # Drain remaining workers
-        while (( active_workers > 0 )); do
-            wait -n 2>/dev/null || wait
-            (( active_workers-- )) || true
-            (( completed++ )) || true
-        done
+        build_scan_targets "$subnet"
+        SCAN_TARGETS=("${SCAN_TARGETS[@]}")
+        run_tcp_port_scan "$max_workers" $((TIMEOUT * 1000))
         echo ""
 
-        # Collect and display results in IP order
-        local subnet_findings=0
-        for i in $(seq 1 254); do
-            local out_file="${subnet_tmp}/${i}.findings"
-            [[ -f "$out_file" ]] || continue
-            while IFS= read -r line; do
-                IFS='|' read -r sev ip port service threat_type threat_ctx action <<< "$line"
-                if [[ "$sev" == "CRITICAL" ]]; then
-                    printf "${RED}  [!!! CRITICAL !!!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
-                    printf "${RED}      %s${RESET}\n" "$threat_ctx"
-                    printf "${YELLOW}      Action: %s${RESET}\n" "$action"
-                    (( CRITICAL_COUNT++ )) || true
-                else
-                    local color="$YELLOW"
-                    [[ "$threat_type" == "OT Protocol Exposure" ]] && color="$MAGENTA"
-                    printf "${color}  [!! HIGH !!] %s:%s - %s${RESET}\n" "$ip" "$port" "$service"
-                    printf "${color}      %s${RESET}\n" "$threat_ctx"
-                    printf "${DARK_YELLOW}      Action: %s${RESET}\n" "$action"
-                    (( HIGH_COUNT++ )) || true
-                fi
-                FINDINGS_ALL+=("$line")
-                (( subnet_findings++ )) || true
-            done < "$out_file"
+        mapfile -t subnet_findings < <(printf '%s\n' "${FINDINGS_ALL[@]:$findings_before}" | sort -t'|' -k2,2V)
+        local subnet_findings_count=${#subnet_findings[@]}
+        for line in "${subnet_findings[@]}"; do
+            [[ -n "$line" ]] && wup_display_finding "$line"
         done
 
-        (( TOTAL_SCANNED += 254 )) || true
+        (( TOTAL_SCANNED += ${#SCAN_TARGETS[@]} )) || true
         local subnet_elapsed=$(( $(date +%s) - subnet_start_epoch ))
-        show_scan_complete "$subnet_elapsed" "$subnet_findings"
+        show_scan_complete "$subnet_elapsed" "$subnet_findings_count"
     done
 
     SCAN_DURATION=$(( $(date +%s) - start_epoch ))

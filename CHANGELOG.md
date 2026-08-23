@@ -11,6 +11,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ### Changed
 - **EGP and ROP Bash scanners** — refactored to use the shared scan engine instead of inline scan loops
+- **WUP WUP and BAS Guardian Bash scanners** — refactored to use the shared scan engine and port catalog builders
+- **Unified launcher** — added non-interactive `scan` mode: `./scripts/ics-ot-protector.sh scan --sector <name> --subnets <CIDRs>`
+- **Non-interactive scan runner** — `scanners/_shared/run_sector_scan.sh` for all sectors via the shared engine
+- **Water and BAS port catalog builders** — `build_water_port_catalog()` and `build_bas_port_catalog()`
 
 ## [4.1.2] - 2026-08-23
 
