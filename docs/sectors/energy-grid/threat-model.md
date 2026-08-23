@@ -4,7 +4,7 @@
 
 ## Sector Objective
 
-Identify named vendor CVE exposure candidates (Hitachi Energy, ABB, B&R), remote-access services, and grid ICS protocols (DNP3, Modbus, IEC 60870-5-104, IEC 61850, EtherNet/IP) on authorized /24 subnets.
+Identify named vendor CVE exposure candidates (Hitachi Energy, ABB, B&R), remote-access services, and grid ICS protocols (DNP3, Modbus, IEC 60870-5-104, IEC 61850, EtherNet/IP, PROFINET, OPC UA) on authorized /24 subnets.
 
 ## Sector-Specific Considerations
 

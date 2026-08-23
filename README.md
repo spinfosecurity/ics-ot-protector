@@ -7,7 +7,7 @@ Previously distributed as four separate repositories, all scanners now live here
 | Sector | Scanner | Status | Platforms |
 |--------|---------|--------|-----------|
 | Water & Wastewater | [WUP WUP](scanners/water/) | v3.4.0 — interactive, parallel scanning | PowerShell + Bash |
-| Power Grid & Substation | [Energy Grid Protector (EGP)](scanners/energy-grid/) | v1.0.0 — CLI parameterized | PowerShell + Bash |
+| Power Grid & Substation | [Energy Grid Protector (EGP)](scanners/energy-grid/) | v1.1.0 — CLI parameterized | PowerShell + Bash |
 | Building Automation (BAS) | [BAS Guardian](scanners/bas/) | v2.0.0 — interactive, vendor CVEs | PowerShell + Bash |
 | Rail & Transit | [Rail-OT-Protector (ROP)](scanners/rail/) | v1.0.0 — CLI, JSON reports | PowerShell + Bash |
 

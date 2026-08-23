@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and intends
 
 ## [Unreleased]
 
+## [4.1.2] - 2026-08-23
+
+### Added
+- **EGP v1.1.0 port coverage** — PROFINET RT/RTA (34962, 34963) and OPC UA (4840) merged from standalone Energy-Grid-Protector into `config/sectors/energy-grid.yaml`
+
+### Fixed
+- **EGP — finding deduplication** — host:port reported once across CVE, remote-access, and ICS checks (parity with standalone v1.1.0)
+- **EGP PowerShell — socket cleanup** — `Test-TcpPort` now disposes the `TcpClient` in a `finally` block (parity with standalone v1.1.0)
+
 ## [4.1.1] - 2026-08-19
 
 ### Added

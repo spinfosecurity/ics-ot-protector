@@ -2,7 +2,7 @@ sector: energy-grid
 metadata:
   name: Energy Grid Protector
   short_name: EGP
-  version: "1.0.0"
+  version: "1.1.0"
   reference: CISA Alert AA26-097A | FBI PSA 2026-08-01
 
 cve_checks:
@@ -86,3 +86,15 @@ ics_ports:
     name: EtherNet/IP-IO
     severity: MEDIUM
     description: "EtherNet/IP implicit I/O port exposed. Should not be reachable from non-OT VLANs. Review network segmentation."
+  - port: 34962
+    name: PROFINET-RT
+    severity: HIGH
+    description: "PROFINET RT port exposed (IEC 61158). Restrict to PLC/drive management VLAN only."
+  - port: 34963
+    name: PROFINET-RTA
+    severity: HIGH
+    description: "PROFINET RTA port exposed (IEC 61158). Should not be reachable outside the automation cell."
+  - port: 4840
+    name: OPC-UA
+    severity: MEDIUM
+    description: "OPC UA port exposed. Verify certificate-based authentication is enforced. Restrict to authorized clients."

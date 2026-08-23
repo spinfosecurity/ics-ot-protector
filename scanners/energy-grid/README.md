@@ -24,7 +24,7 @@ Fast CVE-only mode:
 | Category | Ports | Notes |
 |----------|-------|-------|
 | Remote Access | 3389, 5900, 22, 23, 21, 80, 443 | RDP, VNC, SSH, Telnet, FTP, HTTP/S |
-| ICS Protocols | 502, 20000, 2404, 102, 44818 | Modbus, DNP3, IEC 60870-5-104, S7, EtherNet/IP |
+| ICS Protocols | 502, 20000, 2404, 102, 44818, 34962, 34963, 4840 | Modbus, DNP3, IEC 60870-5-104, S7, EtherNet/IP, PROFINET, OPC UA |
 | Vendor CVEs | Hitachi Energy RTU500, ABB/B&R | Named CVE port checks |
 
 ## Documentation
@@ -35,4 +35,4 @@ Fast CVE-only mode:
 
 ## Version
 
-Current: **1.0.0** (CLI-driven, parameterized subnet input)
+Current: **1.1.0** (CLI-driven; PROFINET + OPC UA coverage)

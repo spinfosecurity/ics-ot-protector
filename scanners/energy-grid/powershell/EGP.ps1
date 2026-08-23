@@ -7,7 +7,7 @@
       - Named vendor CVEs (Hitachi Energy, ABB, B&R)
       - Hitachi Energy RTU500 series vulnerability exposure
       - Remote-access protocol exposure (RDP, VNC, SSH, Telnet, FTP, HTTP/HTTPS)
-      - ICS protocol exposure (DNP3, Modbus, IEC 60870-5-104, IEC 61850, EtherNet/IP)
+      - ICS protocol exposure (DNP3, Modbus, IEC 60870-5-104, IEC 61850, EtherNet/IP, PROFINET, OPC UA)
     Produces severity-tagged (CRITICAL/HIGH/MEDIUM) console output and a timestamped
     JSON report saved to the reports/ directory.
 
@@ -41,7 +41,7 @@
 
 .NOTES
     Author  : spinfosecurity
-    Version : 1.0.0
+    Version : 1.1.0
     License : MIT
     Project : https://github.com/spinfosecurity/ics-ot-protector/tree/main/scanners/energy-grid
 #>
@@ -80,7 +80,7 @@ $script:ScanFindings = [System.Collections.Generic.List[pscustomobject]]::new()
 function Show-Banner {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Cyan
-    Write-Host "  Energy Grid Protector (EGP) v1.0.0" -ForegroundColor Cyan
+    Write-Host "  Energy Grid Protector (EGP) v1.1.0" -ForegroundColor Cyan
     Write-Host "  OT/SCADA Cybersecurity Scanner - Power Grid Edition" -ForegroundColor Cyan
     Write-Host "  github.com/spinfosecurity/ics-ot-protector" -ForegroundColor Cyan
     Write-Host "  Ref: CISA AA26-097A | FBI PSA 2026-08-01" -ForegroundColor DarkCyan
@@ -99,17 +99,15 @@ function Test-TcpPort {
         [int]$Port,
         [int]$TimeoutMilliseconds
     )
+    $client = [System.Net.Sockets.TcpClient]::new()
     try {
-        $client = [System.Net.Sockets.TcpClient]::new()
-        $task   = $client.ConnectAsync($IpAddress, $Port)
-        if ($task.Wait($TimeoutMilliseconds)) {
-            $client.Close()
-            return $true
-        }
-        $client.Close()
-        return $false
+        $task = $client.ConnectAsync($IpAddress, $Port)
+        $connected = $task.Wait($TimeoutMilliseconds)
+        return $connected -and $client.Connected
     } catch {
         return $false
+    } finally {
+        $client.Dispose()
     }
 }
 
@@ -190,6 +188,9 @@ $totalHosts   = $hosts.Count
 $findings     = 0
 $hostsScanned = 0
 
+# Deduplication set: tracks "IP:port" strings already reported
+$seenFindings = [System.Collections.Generic.HashSet[string]]::new()
+
 foreach ($ip in $hosts) {
     $hostsScanned++
     $pct = [math]::Round(($hostsScanned / $totalHosts) * 100, 1)
@@ -201,7 +202,10 @@ foreach ($ip in $hosts) {
     foreach ($cveId in $CveChecks.Keys) {
         $cve = $CveChecks[$cveId]
         foreach ($port in $cve.Ports) {
-            if (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs) {
+            $key = "${ip}:${port}"
+            if (-not $seenFindings.Contains($key) -and
+                (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs)) {
+                [void]$seenFindings.Add($key)
                 Write-Finding `
                     -IpAddress $ip -Port $port `
                     -FindingLabel $cveId `
@@ -216,7 +220,10 @@ foreach ($ip in $hosts) {
     if (-not $CveOnly) {
         # --- Remote Access Checks ---
         foreach ($port in $RemoteAccessPorts.Keys) {
-            if (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs) {
+            $key = "${ip}:${port}"
+            if (-not $seenFindings.Contains($key) -and
+                (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs)) {
+                [void]$seenFindings.Add($key)
                 $ra = $RemoteAccessPorts[$port]
                 Write-Finding `
                     -IpAddress $ip -Port $port `
@@ -230,7 +237,10 @@ foreach ($ip in $hosts) {
 
         # --- ICS Protocol Checks ---
         foreach ($port in $IcsPorts.Keys) {
-            if (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs) {
+            $key = "${ip}:${port}"
+            if (-not $seenFindings.Contains($key) -and
+                (Test-TcpPort -IpAddress $ip -Port $port -TimeoutMilliseconds $TimeoutMs)) {
+                [void]$seenFindings.Add($key)
                 $ics = $IcsPorts[$port]
                 Write-Finding `
                     -IpAddress $ip -Port $port `
@@ -250,7 +260,7 @@ $exportPaths = Export-ScanReport -Findings @($script:ScanFindings) -OutputDir $O
     -Metadata @{
         sector     = 'energy-grid'
         scanner    = 'Energy Grid Protector'
-        version    = '1.0.0'
+        version    = '1.1.0'
         scan_mode  = $modeLabel
         target     = $Subnet
         timeout_ms = $TimeoutMs

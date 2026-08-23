@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Energy Grid Protector (EGP) v1.0.0
+# Energy Grid Protector (EGP) v1.1.0
 # OT/SCADA Cybersecurity Scanner - Power Grid Edition
 # Author  : spinfosecurity
 # License : MIT
@@ -157,7 +157,7 @@ write_finding() {
 show_banner() {
     echo -e "${CYAN}"
     echo "============================================================"
-    echo "  Energy Grid Protector (EGP) v1.0.0"
+    echo "  Energy Grid Protector (EGP) v1.1.0"
     echo "  OT/SCADA Cybersecurity Scanner - Power Grid Edition"
     echo "  github.com/spinfosecurity/ics-ot-protector"
     echo -e "  Ref: CISA AA26-097A | FBI PSA 2026-08-01${NC}"
@@ -184,7 +184,7 @@ else
 fi
 
 EXTRA_META=$(jq -n \
-  --arg version "1.0.0" \
+  --arg version "1.1.0" \
   --arg scan_mode "$MODE_LABEL" \
   --arg target "$SUBNET" \
   --argjson timeout_ms $((TIMEOUT * 1000)) \
@@ -206,6 +206,7 @@ PREFIX="${BASE_IP%.*}"
 FINDINGS=0
 HOSTS_SCANNED=0
 TOTAL_HOSTS=254
+declare -A seen_findings
 
 for i in $(seq 1 254); do
     IP="${PREFIX}.${i}"
@@ -221,7 +222,9 @@ for i in $(seq 1 254); do
         IFS='|' read -r ports_str description severity remediation <<< "${cve_checks[$cve_id]}"
         IFS=',' read -r -a port_list <<< "$ports_str"
         for port in "${port_list[@]}"; do
-            if test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
+            dedup_key="${IP}:${port}"
+            if [[ -z "${seen_findings[$dedup_key]+x}" ]] && test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
+                seen_findings[$dedup_key]=1
                 echo ""
                 write_finding "$IP" "$port" "$cve_id" "$severity" "$description" "$remediation"
                 FINDINGS=$((FINDINGS + 1))
@@ -233,7 +236,9 @@ for i in $(seq 1 254); do
         # --- Remote Access Checks ---
         for port in "${!remote_access_ports[@]}"; do
             IFS='|' read -r name severity description <<< "${remote_access_ports[$port]}"
-            if test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
+            dedup_key="${IP}:${port}"
+            if [[ -z "${seen_findings[$dedup_key]+x}" ]] && test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
+                seen_findings[$dedup_key]=1
                 echo ""
                 write_finding "$IP" "$port" "REMOTE-ACCESS:${name}" "$severity" "$description" "See docs/CISA-Reference.md"
                 FINDINGS=$((FINDINGS + 1))
@@ -243,7 +248,9 @@ for i in $(seq 1 254); do
         # --- ICS Protocol Checks ---
         for port in "${!ics_ports[@]}"; do
             IFS='|' read -r name severity description <<< "${ics_ports[$port]}"
-            if test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
+            dedup_key="${IP}:${port}"
+            if [[ -z "${seen_findings[$dedup_key]+x}" ]] && test_tcp_port "$IP" "$port" "$TIMEOUT" 2>/dev/null; then
+                seen_findings[$dedup_key]=1
                 echo ""
                 write_finding "$IP" "$port" "ICS-PROTOCOL:${name}" "$severity" "$description" "See docs/Threat-Intelligence.md"
                 FINDINGS=$((FINDINGS + 1))
