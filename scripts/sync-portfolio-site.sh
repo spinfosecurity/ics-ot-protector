@@ -14,8 +14,11 @@ fi
 [[ -d "$SRC" ]] || { echo "Missing $SRC" >&2; exit 1; }
 [[ -d "$DEST/.git" ]] || { echo "Not a git repo: $DEST" >&2; exit 1; }
 
-rsync -av --delete \
-  --exclude README.md \
-  "$SRC/" "$DEST/"
+shopt -s dotglob nullglob
+for item in "$SRC"/*; do
+  base="$(basename "$item")"
+  [[ "$base" == "README.md" ]] && continue
+  cp -a "$item" "$DEST/"
+done
 
 echo "Synced to $DEST — review with 'git status' and commit when ready."
