@@ -46,3 +46,10 @@ After the one-shot script, add **`PAGES_DEPLOY_TOKEN`** on `ics-ot-protector` so
 **Pages push denied** — confirm you own `spinfosecurity.github.io` and `gh auth status` shows the correct account.
 
 **Re-run after a partial success** — topics and PR close are idempotent. Run the script again to finish portfolio publish and profile README.
+
+**Profile README failed after portfolio publish** — pull latest and run:
+
+```bash
+git pull
+./scripts/setup-github-credibility.sh --profile-only
+```
