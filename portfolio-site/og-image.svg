@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="SpinfoSecurity OT/ICS Cybersecurity Portfolio">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e7eef3"/>
+      <stop offset="100%" stop-color="#b9d4cf"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="48" y="48" width="1104" height="534" rx="12" fill="#fffcf7" stroke="#0c6f74" stroke-width="4"/>
+  <text x="96" y="180" font-family="Georgia, serif" font-size="56" font-weight="700" fill="#0b1f33">SpinfoSecurity</text>
+  <text x="96" y="260" font-family="Arial, sans-serif" font-size="36" fill="#243948">OT/ICS Cybersecurity Portfolio</text>
+  <text x="96" y="330" font-family="Arial, sans-serif" font-size="28" fill="#4d6170">PowerShell + Bash · Defensive exposure discovery</text>
+  <text x="96" y="400" font-family="Arial, sans-serif" font-size="24" fill="#0c6f74">ICS OT Protector · Water · Energy · BAS · Rail</text>
+  <text x="96" y="520" font-family="Arial, sans-serif" font-size="22" fill="#085458">spinfosecurity.github.io</text>
+</svg>
