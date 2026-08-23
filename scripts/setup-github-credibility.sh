@@ -48,15 +48,25 @@ close_stale_pr() {
 }
 
 pin_flagship_repo() {
-  echo "Pinning ${OWNER}/${REPO} on GitHub profile..."
-  local owner_id repo_id
-  owner_id="$(gh api graphql -f query='query($l:String!){user(login:$l){id}}' -f l="$OWNER" -q .data.user.id)"
-  repo_id="$(gh api graphql -f query='query($o:String!,$n:String!){repository(owner:$o,name:$n){id}}' -f o="$OWNER" -f n="$REPO" -q .data.repository.id)"
-  gh api graphql -f query='mutation($owner:ID!,$repo:ID!){
-    replacePinnedItems(input:{ownerId:$owner,pinnedItems:[{id:$repo,type:REPOSITORY}]}) {
-      pinnedItems { ... on Repository { nameWithOwner } }
-    }
-  }' -f owner="$owner_id" -f repo="$repo_id" -q '.data.replacePinnedItems.pinnedItems[].nameWithOwner'
+  # GitHub does not expose a GraphQL/REST mutation to pin profile repos.
+  local pinned
+  pinned="$(gh api graphql -f query='query($l:String!){
+    user(login:$l){pinnedItems(first:6,types:REPOSITORY){nodes{...on Repository{name}}}}
+  }' -f l="$OWNER" -q '.data.user.pinnedItems.nodes[].name' 2>/dev/null || true)"
+
+  if echo "$pinned" | grep -qx "$REPO"; then
+    echo "Already pinned: ${OWNER}/${REPO}"
+    return 0
+  fi
+
+  cat <<EOF
+Pin ${OWNER}/${REPO} manually (GitHub has no pin API):
+  1. Open https://github.com/${OWNER}
+  2. Click Customize your pins (or the pin gear on your profile)
+  3. Select ${REPO} and save
+
+Currently pinned: ${pinned:-"(none)"}
+EOF
 }
 
 deploy_portfolio_site() {

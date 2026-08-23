@@ -16,7 +16,7 @@ cd ics-ot-protector
 |------|--------|
 | 1 | Sets **repo topics** on `ics-ot-protector` (OT/ICS, PowerShell, Bash, CISA, etc.) |
 | 2 | **Closes stale PR #9** (superseded by main) |
-| 3 | **Pins** `ics-ot-protector` on your GitHub profile |
+| 3 | Checks pin status and prints **manual pin steps** (GitHub has no pin API) |
 | 4 | **Publishes** `portfolio-site/` to `spinfosecurity.github.io` |
 | 5 | Updates **`spinfosecurity/spinfosecurity`** profile README |
 
@@ -39,6 +39,10 @@ After the one-shot script, add **`PAGES_DEPLOY_TOKEN`** on `ics-ot-protector` so
 
 **“Log in as spinfosecurity, not the Cursor bot”** — run `gh auth login` in your terminal, not in Cloud Agent.
 
+**Pin step is manual** — GitHub does not provide an API to pin repos. Use Customize your pins on https://github.com/spinfosecurity.
+
 **Profile repo missing** — the script creates `spinfosecurity/spinfosecurity` if needed. Enable it under GitHub → Settings → Profile → README.
 
 **Pages push denied** — confirm you own `spinfosecurity.github.io` and `gh auth status` shows the correct account.
+
+**Re-run after a partial success** — topics and PR close are idempotent. Run the script again to finish portfolio publish and profile README.
